@@ -1,0 +1,133 @@
+module hopftotal where
+
+import prelude
+import equiv
+
+-- whisker_square_bot (A : U) (a0 a1 : A) (b0 b1 : A)
+--                    (top : Id A a0 a1)
+--                    (bot : Id A b0 b1)
+--                    (left : Id A a0 b0)
+--                    (right : Id A a1 b1) 
+--                    (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) 
+--                    (bot' : Id A b0 b1) (p : Id (Id A b0 b1) bot bot') : (IdP (<x> Id A (top @ x) (bot' @ x)) left right) = 
+--    <x> <y> comp A (sq @ x @ y) [(y = 1) -> p]
+
+whisker_square_top (A : U) (t0 t1 : A) (b0 b1 : A)
+                   (top : Id A t0 t1)
+                   (bot : Id A b0 b1)
+                   (left : Id A t0 b0)
+                   (right : Id A t1 b1) 
+                   (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) :
+                   (top' : Id A t0 t1) (p : Id (Id A t0 t1) top top') -> (IdP (<x> Id A (top' @ x) (bot @ x)) left right) = 
+  -- FIXME: how do you do this directly?  <x> <y> comp A (sq @ x @ y) [(y = 0) -> <z> p @ -z]
+  J (Id A t0 t1) top
+    (\ (top' : Id A t0 t1) (p : Id (Id A t0 t1) top top') -> (IdP (<x> Id A (top' @ x) (bot @ x)) left right))
+    (sq)
+
+useIsEquivPropHeterogeneously (A B : U) (f g : A -> B) (p : Id (A -> B) f g) 
+                              (e1 : isEquiv A B f) (e2 : isEquiv A B g)
+                            : IdP (<x> isEquiv A B (p @ x)) e1 e2 = 
+   J (A -> B) f (\ (g : A -> B) (p : Id (A -> B) f g) -> (e1 : isEquiv A B f) (e2 : isEquiv A B g) -> IdP (<x> isEquiv A B (p @ x)) e1 e2)
+                (\ (e1 : isEquiv A B f) (e2 : isEquiv A B f) -> propIsEquiv A B f e1 e2)
+                g p e1 e2
+
+connection (A : U) (a b : A) (p : Id A a b) : IdP (<x> Id A (p @ x) b) p (<_> b) = 
+           <y><x> p @ (x \/ y)
+
+
+-- ----------------------------------------------------------------------
+
+data S1 = base
+        | loop <i> [(i=0) -> base, (i=1) -> base]
+
+-- helpful abbreviations
+loopS1 : U = Id S1 base base
+compS1 (p : loopS1) (q : loopS1) : loopS1 = <x> comp S1 (p @ x) [(x=1) -> q]
+loop1 : loopS1 = <i> loop{S1} @ i
+loop2 : loopS1 = compS1 loop1 loop1
+
+-- "rotation by angle x"
+-- adds loops
+
+rotLoop : (a : S1) -> Id S1 a a = split
+  base -> loop1
+  loop @ i -> constSquare S1 base loop1 @ i
+
+rot : S1 -> S1 -> S1 = split
+  base -> (\ (y : S1) -> y)
+  loop @ i -> (\ (y : S1) -> rotLoop y @ i)
+
+loop3 : Id S1 base base = compS1 loop2 loop1
+test23 : IdP (<s> Id S1 (loop3 @ s) (loop3 @ s)) loop2 loop2 = <x> <y> rot (loop3 @ x) (loop2 @ y)
+test23_diag : Id S1 base base = <x> test23 @ x @ x
+
+rotIsEquiv : (a : S1) -> isEquiv S1 S1 (rot a) = split
+   base -> idIsEquiv S1
+   loop @ x -> useIsEquivPropHeterogeneously S1 S1 (\ (x : S1) -> x) (\ (x : S1) -> x) (<x> rot (loop{S1} @ x)) (idIsEquiv S1) (idIsEquiv S1) @ x 
+
+rotId (x : S1) : Id U S1 S1 = isEquivEq S1 S1 (rot x) (rotIsEquiv x)
+
+-- suspensions 
+
+data susp (A : U) = north
+                  | south
+                  | merid (a:A) <i> [(i=0) -> north, (i=1) -> south]
+
+S2 : U = susp S1
+S3 : U = susp S2
+
+-- Hopf fibration
+
+H : S2 -> U = split
+  north -> S1
+  south -> S1
+  merid a @ x -> rotId a @ x
+
+-- S3 as S1 join S1
+
+merS3 (a : S2) : Id S3 north south = <y> merid{S3} a @ y
+merS3ns : Id S3 north north = <x> comp S3 (merid{S3} north @ x) [(x=1) -> <y> merid{S3} south @ -y]
+
+in_boundary : S1 -> S3 = split 
+    base -> north
+    loop @ x -> merS3ns @ x
+    
+-- if it were a fat suspension, this would be inm(inm _),
+-- but that doesn't exist because the suspension has been thinned, so drag it southward
+in_middle (x : S1) : S3 = south
+
+gluebm : (a : S1) (b : S1) -> Id S3 (in_boundary a) (in_middle b) = split 
+  base -> \ (b : S1) -> <y> merS3 south @ y
+  loop @ x -> \ (b : S1) -> square b @ x where
+
+    line (b : S1) : Id (Id S3 north south) (merS3 north) (merS3 south) = <x> merS3 (merid{S2} b @ x)
+    
+    square1 (b : S1) : IdP (<x> Id S3 (merS3 south @ x) south) (merS3 south) (<_> south) = 
+            <x> <y> (merS3 south @ (x \/ y))
+    
+    -- FIXME: this should be just a com but I couldn't figure out how to do it
+    square2 (b : S1) : IdP (<x> Id S3 (merS3 north @ x) south) (merS3 south) (<_> south) = 
+            whisker_square_top S3 north south south south (merS3 south) (<_> south) (merS3 south) (<_> south)
+                               (square1 b)
+                               (merS3 north) (<x> line b @ -x)
+    
+    coh (A : U) (t1 : A) : (b1 : A) (right : Id A t1 b1) 
+        (t0 b0 : A) 
+        (top : Id A t0 b1) 
+        (bot : Id A b0 b1)
+        (left : Id A t0 b0)
+        (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > b1)) ->
+        IdP (<x> Id A ((compId A t0 b1 t1 top (<z> right @ -z)) @ x) (bot @ x)) left right = 
+      J A t1 ( \ (b1 : A) (right : Id A t1 b1) ->  (t0 b0 : A) 
+                 (top : Id A t0 b1) (bot : Id A b0 b1)
+                 (left : Id A t0 b0) (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > b1)) 
+                 -> IdP (<x> Id A ((compId A t0 b1 t1 top (<z> right @ -z)) @ x) (bot @ x)) left right) 
+             ( \ (t0 b0 : A)  (top : Id A t0 t1) (bot : Id A b0 t1)
+                 (left : Id A t0 b0) (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > t1)) -> sq)
+
+    square (b : S1) : IdP (<x> Id S3 (merS3ns @ x) south) (merS3 south) (merS3 south) = 
+           coh S3 north south (merS3 south) north south (merS3 north) (<_> south) (merS3 south) (square2 b)
+  
+
+
+

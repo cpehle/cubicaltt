@@ -7,7 +7,7 @@ data S1 = base
         | loop <i> [(i=0) -> base, (i=1) -> base]
 
 loopS1 : U = Id S1 base base
-
+compS1 : loopS1 -> loopS1 -> loopS1 = compId S1 base base base
 loop1 : loopS1 = <i> loop{S1} @ i
 
 invLoop : loopS1 = inv S1 base base loop1
