@@ -121,6 +121,13 @@ comp_inv_r (A : U) (a0 : A) : (a1 : A) (p : Id A a0 a1)
              Id (Id A a0 a0) (<y> comp A (p @ y) [ (y = 1) -> <y> p @ -y ]) (<_> a0))
           (<_> <_> a0)
 
+comp_inv_r2 (A : U) (a0 : A) : (a1 : A) (p : Id A a0 a1)
+          -> Id (Id A a1 a1) (<y> comp A a0 [ (y = 0) -> p, (y = 1) -> <y> p @ y ])
+                             (<_> a1) = 
+   J A a0 (\ (a1 : A) (p : Id A a0 a1) ->
+             Id (Id A a1 a1) (<y> comp A a0 [ (y = 0) -> p, (y = 1) -> <y> p @ y ]) (<_> a1))
+          (<_> <_> a0)
+
 -- connection (A : U) (a b : A) (p : Id A a b) : IdP (<x> Id A (p @ x) b) p (<_> b) = 
 --            <y><x> p @ (x \/ y)
 
@@ -164,12 +171,12 @@ rot_comm (a : S1) (b : S1) : Id S1 (rot a b) (rot b a) = ?
 -- ----------------------------------------------------------------------
 -- suspensions 
 
-data susp (A : U) = north
+data Susp (A : U) = north
                   | south
                   | merid (a:A) <i> [(i=0) -> north, (i=1) -> south]
 
-S2 : U = susp S1
-S3 : U = susp S2
+S2 : U = Susp S1
+S3 : U = Susp S2
 
 -- ----------------------------------------------------------------------
 -- Hopf fibration
@@ -306,33 +313,62 @@ S3_to_TH : S3 -> TH = split
   south -> in_north base -- would be in_north(S) but there's only one point
   merid a @ x -> S3_to_TH_merid gluens a @ x
 
+-- ----------------------------------------------------------------------
+-- pointed maps
+
+PointedType : U = (A : U) * A
+
+Omega (A : PointedType) : PointedType = (Id A.1 A.2 A.2 , <_> A.2)
+
+PointedMap (A : PointedType) (B : PointedType) : U = 
+   (f : A.1 -> B.1) * (Id (B.1) (f A.2) B.2)
+
+OmegaF (A B : PointedType) (f : PointedMap A B) : PointedMap (Omega A) (Omega B) = 
+       ((\ (p : (Omega A).1) -> <x> (comp B.1 (f.1 (p @ x)) [(x=1) -> f.2, (x=0) -> f.2])) ,
+        comp_inv_r2 B.1 (f.1 A.2) B.2 f.2)
+
+SuspP (A : PointedType) : PointedType = (Susp A.1, north)
+
+meridP (A : PointedType) : PointedMap A (Omega(SuspP A)) = 
+  ((\ (a : A.1) -> <x> comp (Susp A.1) (merid{Susp A.1} a @ x) [(x = 1) -> <x> merid{Susp A.1} A.2 @ -x]),
+   comp_inv_r (Susp A.1) north south (<x> merid{Susp A.1} A.2 @ x))
+
+S1P : PointedType = (S1, base)
 
 -- ----------------------------------------------------------------------
--- examples 
+-- examples
 
-loopS2_1' : Id (Id S2 north north) 
-               (<y> comp S2 (merid{S2} base @ y) [ (y = 1) -> <y> merid{S2} base @ -y ])
-               (<y> comp S2 (merid{S2} base @ y) [ (y = 1) -> <y> merid{S2} base @ -y ]) =
-         <x> <y> comp S2 (merid{S2} (loop{S1} @x) @ y) [ (y = 1) -> <y> merid{S2} base @ -y ]
+S2P : PointedType = SuspP S1P
 
-loopS2 : Id (Id S2 north north) (<_> north) (<_> north) = 
-    <z> comp (Id S2 north north) 
-             (loopS2_1' @ z)
-             [(z = 0) -> comp_inv_r S2 north south (<y> merid{S2} base @ y),
-              (z = 1) -> comp_inv_r S2 north south (<y> merid{S2} base @ y)]
+OmegaS1_to_Omega2S2 : PointedMap (Omega S1P) (Omega (Omega S2P)) = OmegaF S1P (Omega S2P) (meridP S1P)
+
+loopS2 : (Omega(Omega(S2P))).1 = OmegaS1_to_Omega2S2.1 loopS1
+-- seems a little more complicated than what I wrote by hand?
+-- loopS2_1' : Id (Id S2 north north) 
+--                (<y> comp S2 (merid{S2} base @ y) [ (y = 1) -> <y> merid{S2} base @ -y ])
+--                (<y> comp S2 (merid{S2} base @ y) [ (y = 1) -> <y> merid{S2} base @ -y ]) =
+--          <x> <y> comp S2 (merid{S2} (loop{S1} @x) @ y) [ (y = 1) -> <y> merid{S2} base @ -y ]
+-- loopS2 : Id (Id S2 north north) (<_> north) (<_> north) = 
+--     <z> comp (Id S2 north north) 
+--              (loopS2_1' @ z)
+--              [(z = 0) -> comp_inv_r S2 north south (<y> merid{S2} base @ y),
+--               (z = 1) -> comp_inv_r S2 north south (<y> merid{S2} base @ y)]
+
+S3P : PointedType = SuspP S2P
+
+Omega2S2_to_Omega3S3 : PointedMap (Omega (Omega S2P)) (Omega (Omega (Omega S3P))) = 
+                     OmegaF (Omega S2P) (Omega (Omega S3P)) (OmegaF S2P (Omega S3P) (meridP S2P))
 
 loopS3 : Id (Id (Id S3 north north) (<_> north) (<_> north)) (<_> <_> north) (<_> <_> north) = 
-       ?
+         Omega2S2_to_Omega3S3.1 loopS2
 
-apOmega2 (A : U) (a : A) (B : A -> U) 
-         (f : (x : A) -> B x)
-         (p : Id (Id A a a) (<_> a) (<_> a)) : 
-         IdP (<x> IdP (<y> B (p @ x @ y)) (f a) (f a)) (<_> f a) (<_> f a) = 
-   <x> <y> f (p @ x @ y)
+THP : PointedType = (TH , (north, base))
 
--- test (h : IdP (<x> IdP (<y> H (loopS2_1 @ x @ y)) base base) (<_> base) (<_> base)) : 
---      IdP (<x> (Id S3 (in_boundary (h @ x @ x)) (in_boundary (h @ x @ x))))
---          (<x> (in_boundary (h @ x @ x))) 
---          (<x> (in_boundary (h @ x @ x))) = ?
-         
+S3_to_TH_P : PointedMap S3P THP = (S3_to_TH, <_> (north, base))
+
+Omega3S3_to_Omega3TH : PointedMap (Omega (Omega (Omega S3P))) (Omega (Omega (Omega THP))) =
+         OmegaF (Omega (Omega S3P)) (Omega (Omega THP))
+                (OmegaF (Omega S3P) (Omega THP) (OmegaF S3P THP S3_to_TH_P))
+
+test : (Omega (Omega (Omega THP))).1 = Omega3S3_to_Omega3TH.1 loopS3
      
