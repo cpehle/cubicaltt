@@ -3,27 +3,103 @@ module hopftotal where
 import prelude
 import equiv
 
+-- ----------------------------------------------------------------------
+-- library
+
+fill0 (A0 : U) (A1 : U) (A : Id U A0 A1) (a0 : A0) : IdP A a0 (transport A a0) =
+   <x> transport (<y> A @ (x/\y)) a0
+
+hom_to_het_left (A0 : U) : (A1 : U) (A : Id U A0 A1)
+                (a0 : A0) (a1 : A1)
+                (p : Id A1 (transport A a0) a1) ->
+                IdP A a0 a1 = 
+  J U A0 (\ (A1 : U) (A : Id U A0 A1) -> 
+         (a0 : A0) (a1 : A1)
+         (p : Id A1 (transport A a0) a1) -> IdP A a0 a1)
+       (\ (a0 : A0) (a1 : A0) (p : Id A0 (a0) a1) -> p)
+
+hom_to_het_right (A0 : U) : (A1 : U) (A : Id U A0 A1)
+                (a0 : A0) (a1 : A1)
+                (p : Id A0 a0 (transport (<x> A @ -x) a1)) ->
+                IdP A a0 a1 = 
+  J U A0 (\ (A1 : U) (A : Id U A0 A1) -> 
+         (a0 : A0) (a1 : A1)
+         (p : Id A0 a0 (transport (<x> A @ -x) a1)) -> IdP A a0 a1)
+       (\ (a0 : A0) (a1 : A0) (p : Id A0 (a0) a1) -> p)
+  
+transport_inv_r (A0 : U) (A1 : U) (A : Id U A0 A1) (a1 : A1) 
+                 : Id A1 (transport A (transport (<x> A @ -x) a1)) a1 = 
+    J U A0 (\ (A1 : U) (A : Id U A0 A1) -> (a1 : A1) -> Id A1 (transport A (transport (<x> A @ -x) a1)) a1)
+           (\ (a1 : A0) -> <_> a1)
+           A1 A a1
+
+-- coe a : b -> c = (b/\c) \/ (b/\-a) \/ (c/\a)
+-- coe z : x -> 0 = (x/\-z) 
+-- coe z : 1 -> y = y \/ -z \/ (z/\y)
+
+-- FIXME there should be a more direct proof
+-- but normal form seems not that bad
+funext_het_l (A0 A1 : U) (A : Id U A0 A1) :
+             (B0 : A0 -> U) (B1 : A1 -> U) (B : IdP (<x> A @ x -> U) B0 B1) 
+             (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A1) -> B1 a1) 
+             (f : (a0 : A0) -> IdP (<x> (B @ x) ((fill0 A0 A1 A a0) @ x)) (f0 a0) (f1 (transport A a0))) ->
+             IdP (<x> (a : A @ x) -> (B @ x) a) f0 f1 = 
+             J U A0 (\ (A1 : U) (A : Id U A0 A1) ->
+                       (B0 : A0 -> U) (B1 : A1 -> U) (B : IdP (<x> A @ x -> U) B0 B1) 
+                       (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A1) -> B1 a1) 
+                       (f : (a0 : A0) -> IdP (<x> (B @ x) ((fill0 A0 A1 A a0) @ x)) (f0 a0) (f1 (transport A a0))) 
+                       -> IdP (<x> (a : A @ x) -> (B @ x) a) f0 f1)
+                    (\ (B0 : A0 -> U) (B1 : A0 -> U) (B : IdP (<_> A0 -> U) B0 B1) 
+                       (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A0) -> B1 a1) 
+                       (f : (a0 : A0) -> IdP (<x> (B @ x) a0) (f0 a0) (f1 a0)) 
+                       -> <x> \ (a : A0) -> f a @ x) 
+                    A1 A
+             -- FIXME: doesn't have the right boundary?
+             -- <x> \ (a : A @ x) -> transport (<w> (B @ x) ((transport_inv_r A0 (A@x) (<z> A @ (x /\ z)) a) @ w))
+             --                                ((f (transport (<z> A @ (x /\ -z)) a)) @ x)
+
+funext_het_l_constant_range (A0 A1 : U) (A : Id U A0 A1) :
+                            (B : U)
+                            (f0 : A0 -> B) (f1 : A1 -> B) 
+                            (f : (a0 : A0) -> Id B (f0 a0) (f1 (transport A a0))) ->
+                            IdP (<x> (a : A @ x) -> B) f0 f1 = 
+             J U A0 (\ (A1 : U) (A : Id U A0 A1) ->
+                       (B : U)
+                       (f0 : (a0 : A0) -> B) (f1 : (a1 : A1) -> B) 
+                       (f : (a0 : A0) -> Id B (f0 a0) (f1 (transport A a0))) 
+                       -> IdP (<x> (a : A @ x) -> B) f0 f1)
+                    (\ (B : U) 
+                       (f0 : (a0 : A0) -> B) (f1 : (a1 : A0) -> B) 
+                       (f : (a0 : A0) -> Id B (f0 a0) (f1 a0)) 
+                       -> <x> \ (a : A0) -> f a @ x) 
+                    A1 A
+
+-- funext_het (A0 A1 : U) (A : Id U A0 A1)
+--            (B0 : A0 -> U) (B1 : A1 -> U) (B : IdP (<x> A @ x -> U) B0 B1) 
+--            (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A1) -> B1 a1) 
+--            (f : (a0 : A0) (a1 : A1) (a : IdP A a0 a1) 
+--                  -> IdP (<x> (B @ x) (a @ x)) (f0 a0) (f1 a1)) :
+--            IdP (<x> (a : A @ x) -> (B @ x) a) f0 f1 = <x> \ (a : A @ x) -> f ? ? ? @ x
+
 -- whisker_square_bot (A : U) (a0 a1 : A) (b0 b1 : A)
---                    (top : Id A a0 a1)
+--                   (top : Id A a0 a1)
+--                   (bot : Id A b0 b1)
+--                   (left : Id A a0 b0)
+--                   (right : Id A a1 b1) 
+--                   (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) 
+--                   (bot' : Id A b0 b1) (p : Id (Id A b0 b1) bot bot') : (IdP (<x> Id A (top @ x) (bot' @ x)) left right) = 
+--   <x> <y> comp A (sq @ x @ y) [(y = 1) -> <z> p @ z @ x ]
+
+-- whisker_square_top (A : U) (t0 t1 : A) (b0 b1 : A)
+--                    (top : Id A t0 t1)
 --                    (bot : Id A b0 b1)
---                    (left : Id A a0 b0)
---                    (right : Id A a1 b1) 
+--                    (left : Id A t0 b0)
+--                    (right : Id A t1 b1) 
 --                    (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) 
---                    (bot' : Id A b0 b1) (p : Id (Id A b0 b1) bot bot') : (IdP (<x> Id A (top @ x) (bot' @ x)) left right) = 
---    <x> <y> comp A (sq @ x @ y) [(y = 1) -> p]
+--                    (top' : Id A t0 t1) (p : Id (Id A t0 t1) top top') : (IdP (<x> Id A (top' @ x) (bot @ x)) left right) = 
+--   <x> <y> comp A (sq @ x @ y) [(y = 0) -> <z> p @ z @ x]
 
-whisker_square_top (A : U) (t0 t1 : A) (b0 b1 : A)
-                   (top : Id A t0 t1)
-                   (bot : Id A b0 b1)
-                   (left : Id A t0 b0)
-                   (right : Id A t1 b1) 
-                   (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) :
-                   (top' : Id A t0 t1) (p : Id (Id A t0 t1) top top') -> (IdP (<x> Id A (top' @ x) (bot @ x)) left right) = 
-  -- FIXME: how do you do this directly?  <x> <y> comp A (sq @ x @ y) [(y = 0) -> <z> p @ -z]
-  J (Id A t0 t1) top
-    (\ (top' : Id A t0 t1) (p : Id (Id A t0 t1) top top') -> (IdP (<x> Id A (top' @ x) (bot @ x)) left right))
-    (sq)
-
+-- normal form is pretty long
 useIsEquivPropHeterogeneously (A B : U) (f g : A -> B) (p : Id (A -> B) f g) 
                               (e1 : isEquiv A B f) (e2 : isEquiv A B g)
                             : IdP (<x> isEquiv A B (p @ x)) e1 e2 = 
@@ -31,34 +107,44 @@ useIsEquivPropHeterogeneously (A B : U) (f g : A -> B) (p : Id (A -> B) f g)
                 (\ (e1 : isEquiv A B f) (e2 : isEquiv A B f) -> propIsEquiv A B f e1 e2)
                 g p e1 e2
 
-connection (A : U) (a b : A) (p : Id A a b) : IdP (<x> Id A (p @ x) b) p (<_> b) = 
-           <y><x> p @ (x \/ y)
+-- pretty short normal form
+comp_inv_r (A : U) (a0 : A) : (a1 : A) (p : Id A a0 a1)
+          -> Id (Id A a0 a0) (<y> comp A (p @ y) [ (y = 1) -> <y> p @ -y ])
+                             (<_> a0) = 
+   J A a0 (\ (a1 : A) (p : Id A a0 a1) ->
+             Id (Id A a0 a0) (<y> comp A (p @ y) [ (y = 1) -> <y> p @ -y ]) (<_> a0))
+          (<_> <_> a0)
+
+-- connection (A : U) (a b : A) (p : Id A a b) : IdP (<x> Id A (p @ x) b) p (<_> b) = 
+--            <y><x> p @ (x \/ y)
 
 
 -- ----------------------------------------------------------------------
+-- circle
 
 data S1 = base
         | loop <i> [(i=0) -> base, (i=1) -> base]
 
 -- helpful abbreviations
 loopS1 : U = Id S1 base base
+
 compS1 (p : loopS1) (q : loopS1) : loopS1 = <x> comp S1 (p @ x) [(x=1) -> q]
-loop1 : loopS1 = <i> loop{S1} @ i
-loop2 : loopS1 = compS1 loop1 loop1
+loopS1_1 : loopS1 = <i> loop{S1} @ i
+loopS1_2 : loopS1 = compS1 loopS1_1 loopS1_1
 
 -- "rotation by angle x"
 -- adds loops
 
 rotLoop : (a : S1) -> Id S1 a a = split
-  base -> loop1
-  loop @ i -> constSquare S1 base loop1 @ i
+  base -> loopS1_1
+  loop @ i -> constSquare S1 base loopS1_1 @ i
 
 rot : S1 -> S1 -> S1 = split
   base -> (\ (y : S1) -> y)
   loop @ i -> (\ (y : S1) -> rotLoop y @ i)
 
-loop3 : Id S1 base base = compS1 loop2 loop1
-test23 : IdP (<s> Id S1 (loop3 @ s) (loop3 @ s)) loop2 loop2 = <x> <y> rot (loop3 @ x) (loop2 @ y)
+loopS1_3 : Id S1 base base = compS1 loopS1_2 loopS1_1
+test23 : IdP (<s> Id S1 (loopS1_3 @ s) (loopS1_3 @ s)) loopS1_2 loopS1_2 = <x> <y> rot (loopS1_3 @ x) (loopS1_2 @ y)
 test23_diag : Id S1 base base = <x> test23 @ x @ x
 
 rotIsEquiv : (a : S1) -> isEquiv S1 S1 (rot a) = split
@@ -67,6 +153,9 @@ rotIsEquiv : (a : S1) -> isEquiv S1 S1 (rot a) = split
 
 rotId (x : S1) : Id U S1 S1 = isEquivEq S1 S1 (rot x) (rotIsEquiv x)
 
+rot_comm (a : S1) (b : S1) : Id S1 (rot a b) (rot b a) = ?
+
+-- ----------------------------------------------------------------------
 -- suspensions 
 
 data susp (A : U) = north
@@ -76,6 +165,7 @@ data susp (A : U) = north
 S2 : U = susp S1
 S3 : U = susp S2
 
+-- ----------------------------------------------------------------------
 -- Hopf fibration
 
 H : S2 -> U = split
@@ -83,7 +173,8 @@ H : S2 -> U = split
   south -> S1
   merid a @ x -> rotId a @ x
 
--- S3 as S1 join S1
+-- ----------------------------------------------------------------------
+-- S1 join S1 constructors for S3
 
 merS3 (a : S2) : Id S3 north south = <y> merid{S3} a @ y
 merS3ns : Id S3 north north = <x> comp S3 (merid{S3} north @ x) [(x=1) -> <y> merid{S3} south @ -y]
@@ -96,22 +187,8 @@ in_boundary : S1 -> S3 = split
 -- but that doesn't exist because the suspension has been thinned, so drag it southward
 in_middle (x : S1) : S3 = south
 
-gluebm : (a : S1) (b : S1) -> Id S3 (in_boundary a) (in_middle b) = split 
-  base -> \ (b : S1) -> <y> merS3 south @ y
-  loop @ x -> \ (b : S1) -> square b @ x where
-
-    line (b : S1) : Id (Id S3 north south) (merS3 north) (merS3 south) = <x> merS3 (merid{S2} b @ x)
-    
-    square1 (b : S1) : IdP (<x> Id S3 (merS3 south @ x) south) (merS3 south) (<_> south) = 
-            <x> <y> (merS3 south @ (x \/ y))
-    
-    -- FIXME: this should be just a com but I couldn't figure out how to do it
-    square2 (b : S1) : IdP (<x> Id S3 (merS3 north @ x) south) (merS3 south) (<_> south) = 
-            whisker_square_top S3 north south south south (merS3 south) (<_> south) (merS3 south) (<_> south)
-                               (square1 b)
-                               (merS3 north) (<x> line b @ -x)
-    
-    coh (A : U) (t1 : A) : (b1 : A) (right : Id A t1 b1) 
+-- pretty short normal form
+gluebm_adjust (A : U) (t1 : A) : (b1 : A) (right : Id A t1 b1) 
         (t0 b0 : A) 
         (top : Id A t0 b1) 
         (bot : Id A b0 b1)
@@ -125,9 +202,77 @@ gluebm : (a : S1) (b : S1) -> Id S3 (in_boundary a) (in_middle b) = split
              ( \ (t0 b0 : A)  (top : Id A t0 t1) (bot : Id A b0 t1)
                  (left : Id A t0 b0) (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > t1)) -> sq)
 
+
+gluebm : (a : S1) (b : S1) -> Id S3 (in_boundary a) (in_middle b) = split 
+  base -> \ (b : S1) -> <y> merS3 south @ y
+  loop @ x -> \ (b : S1) -> square b @ x where
+
+    line (b : S1) : Id (Id S3 north south) (merS3 north) (merS3 south) = <x> merS3 (merid{S2} b @ x)
+    
+    square1 (b : S1) : IdP (<x> Id S3 (merS3 south @ x) south) (merS3 south) (<_> south) = 
+            <x> <y> (merS3 south @ (x \/ y))
+    
+    square2 (b : S1) : IdP (<x> Id S3 (merS3 north @ x) south) (merS3 south) (<_> south) = 
+            <x> <y> comp S3 (square1 b @ x @ y) [ (y = 0) -> <z> line b @ -z @ x ]
+    
     square (b : S1) : IdP (<x> Id S3 (merS3ns @ x) south) (merS3 south) (merS3 south) = 
-           coh S3 north south (merS3 south) north south (merS3 north) (<_> south) (merS3 south) (square2 b)
-  
+           gluebm_adjust S3 north south (merS3 south) north south (merS3 north) (<_> south) (merS3 south) (square2 b)
 
+TH_to_S3' : (a : S2) -> H a -> S3 = split
+   north -> in_boundary
+   south -> in_middle
+   merid a @ x -> 
+         (funext_het_l_constant_range S1 S1 (<x> (H (merid{S2} a @ x))) S3 in_boundary in_middle 
+                                      (\ (b : S1) -> gluebm b (rot a b)))@x
 
+-- ----------------------------------------------------------------------
+-- S1 join S1 constructors for TH
 
+TH : U = (c : S2) * H c
+
+merS2 (a : S1) : Id S2 north south = <y> merid{S2} a @ y
+
+in_north (a : S1) : (c : S2) * H c = (north , a)
+
+in_south (a : S1) : (c : S2) * H c = (south , a)
+
+test (a : S1) (b : S1) : S1 = (transport (rotId a) (transport (<x> rotId a @ -x) b))
+
+gluens_1 (a : S1) (b : S1) : Id S2 north south = 
+         <x> merS2 (transport (<z> rotId a @ -z) b) @ x
+
+gluens_2 (a : S1) (b : S1) (rot_comm : (a : S1) (b : S1) -> Id S1 (rot a b) (rot b a))
+         : IdP (<x> H (gluens_1 a b @ x)) a b = 
+  hom_to_het_left S1 S1 (<x> H (gluens_1 a b @ x)) a b 
+                  (<x> comp S1 ((transport_inv_r S1 S1 (rotId a) b) @ x) [(x=0) -> (rot_comm a (transport (<x> rotId a @ -x) b))])
+
+gluens (a : S1) (b : S1) : Id TH (in_north a) (in_south b) = 
+   <x> (gluens_1 a b @ x , 
+        gluens_2 a b rot_comm @ x)
+
+-- ----------------------------------------------------------------------
+-- examples 
+
+loopS2_1' : Id (Id S2 north north) 
+               (<y> comp S2 (merid{S2} base @ y) [ (y = 1) -> <y> merid{S2} base @ -y ])
+               (<y> comp S2 (merid{S2} base @ y) [ (y = 1) -> <y> merid{S2} base @ -y ]) =
+         <x> <y> comp S2 (merid{S2} (loop{S1} @x) @ y) [ (y = 1) -> <y> merid{S2} base @ -y ]
+
+loopS2_1 : Id (Id S2 north north) (<_> north) (<_> north) = 
+    <z> comp (Id S2 north north) 
+             (loopS2_1' @ z)
+             [(z = 0) -> comp_inv_r S2 north south (<y> merid{S2} base @ y),
+              (z = 1) -> comp_inv_r S2 north south (<y> merid{S2} base @ y)]
+
+apOmega2 (A : U) (a : A) (B : A -> U) 
+         (f : (x : A) -> B x)
+         (p : Id (Id A a a) (<_> a) (<_> a)) : 
+         IdP (<x> IdP (<y> B (p @ x @ y)) (f a) (f a)) (<_> f a) (<_> f a) = 
+   <x> <y> f (p @ x @ y)
+
+-- test (h : IdP (<x> IdP (<y> H (loopS2_1 @ x @ y)) base base) (<_> base) (<_> base)) : 
+--      IdP (<x> (Id S3 (in_boundary (h @ x @ x)) (in_boundary (h @ x @ x))))
+--          (<x> (in_boundary (h @ x @ x))) 
+--          (<x> (in_boundary (h @ x @ x))) = ?
+         
+     
