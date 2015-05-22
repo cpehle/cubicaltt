@@ -160,9 +160,12 @@ loopS1_3 : Id S1 base base = compS1 loopS1_2 loopS1
 test23 : IdP (<s> Id S1 (loopS1_3 @ s) (loopS1_3 @ s)) loopS1_2 loopS1_2 = <x> <y> rot (loopS1_3 @ x) (loopS1_2 @ y)
 test23_diag : Id S1 base base = <x> test23 @ x @ x
 
+rotIsEquiv_loop : IdP (<x> isEquiv S1 S1 (rot (loopS1 @ x))) (idIsEquiv S1) (idIsEquiv S1) =
+  <x> useIsEquivPropHeterogeneously S1 S1 (\ (x : S1) -> x) (\ (x : S1) -> x) (<x> rot (loop{S1} @ x)) (idIsEquiv S1) (idIsEquiv S1) @ x 
+
 rotIsEquiv : (a : S1) -> isEquiv S1 S1 (rot a) = split
    base -> idIsEquiv S1
-   loop @ x -> useIsEquivPropHeterogeneously S1 S1 (\ (x : S1) -> x) (\ (x : S1) -> x) (<x> rot (loop{S1} @ x)) (idIsEquiv S1) (idIsEquiv S1) @ x 
+   loop @ x -> rotIsEquiv_loop @ x
 
 rotId (x : S1) : Id U S1 S1 = isEquivEq S1 S1 (rot x) (rotIsEquiv x)
 
@@ -178,6 +181,10 @@ data Susp (A : U) = north
 S2 : U = Susp S1
 S3 : U = Susp S2
 
+merS3 (a : S2) : Id S3 north south = <y> merid{S3} a @ y
+merS3ns : Id S3 north north = <x> comp S3 (merid{S3} north @ x) [(x=1) -> <y> merid{S3} south @ -y]
+
+
 -- ----------------------------------------------------------------------
 -- Hopf fibration
 
@@ -186,11 +193,10 @@ H : S2 -> U = split
   south -> S1
   merid a @ x -> rotId a @ x
 
+TH : U = (c : S2) * H c
+
 -- ----------------------------------------------------------------------
 -- S1 join S1 constructors for S3
-
-merS3 (a : S2) : Id S3 north south = <y> merid{S3} a @ y
-merS3ns : Id S3 north north = <x> comp S3 (merid{S3} north @ x) [(x=1) -> <y> merid{S3} south @ -y]
 
 in_boundary : S1 -> S3 = split 
     base -> north
@@ -238,10 +244,10 @@ TH_to_S3' : (a : S2) -> H a -> S3 = split
          (funext_het_l_constant_range S1 S1 (<x> (H (merid{S2} a @ x))) S3 in_boundary in_middle 
                                       (\ (b : S1) -> gluebm b (rot a b)))@x
 
+TH_to_S3 (p : TH) : S3 = TH_to_S3' p.1 p.2
+
 -- ----------------------------------------------------------------------
 -- S1 join S1 constructors for TH
-
-TH : U = (c : S2) * H c
 
 merS2 (a : S1) : Id S2 north south = <y> merid{S2} a @ y
 
@@ -314,7 +320,15 @@ S3_to_TH : S3 -> TH = split
   merid a @ x -> S3_to_TH_merid gluens a @ x
 
 -- ----------------------------------------------------------------------
--- pointed maps
+-- composite 1
+
+composite1 : (a : S3) -> Id S3 (TH_to_S3 (S3_to_TH (a))) a = split
+  north -> <_> north
+  south -> merS3 south -- arbitrary
+  merid a @ x -> ?
+
+-- ----------------------------------------------------------------------
+-- pointed types
 
 PointedType : U = (A : U) * A
 
@@ -334,9 +348,6 @@ meridP (A : PointedType) : PointedMap A (Omega(SuspP A)) =
    comp_inv_r (Susp A.1) north south (<x> merid{Susp A.1} A.2 @ x))
 
 S1P : PointedType = (S1, base)
-
--- ----------------------------------------------------------------------
--- examples
 
 S2P : PointedType = SuspP S1P
 
@@ -372,3 +383,8 @@ Omega3S3_to_Omega3TH : PointedMap (Omega (Omega (Omega S3P))) (Omega (Omega (Ome
 
 test : (Omega (Omega (Omega THP))).1 = Omega3S3_to_Omega3TH.1 loopS3
      
+-- delay (A : U) (a : A) : (x : Unit) -> A = split
+--      tt -> a
+
+-- test' : Unit -> (Omega (Omega (Omega THP))).1 = split 
+--       tt -> Omega3S3_to_Omega3TH.1 loopS3
