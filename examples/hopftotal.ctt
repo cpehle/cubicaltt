@@ -6,6 +6,12 @@ import equiv
 -- ----------------------------------------------------------------------
 -- library
 
+ap (A : U) (B : A -> U) 
+   (f : (x : A) -> B x)
+   (a0 : A) (a1 : A) (a : Id A a0 a1) :
+   IdP (<x> B (a @ x)) (f a0) (f a1) =
+   <x> f (a @ x)
+
 fill0 (A0 : U) (A1 : U) (A : Id U A0 A1) (a0 : A0) : IdP A a0 (transport A a0) =
    <x> transport (<y> A @ (x/\y)) a0
 
@@ -81,23 +87,23 @@ funext_het_l_constant_range (A0 A1 : U) (A : Id U A0 A1) :
 --                  -> IdP (<x> (B @ x) (a @ x)) (f0 a0) (f1 a1)) :
 --            IdP (<x> (a : A @ x) -> (B @ x) a) f0 f1 = <x> \ (a : A @ x) -> f ? ? ? @ x
 
--- whisker_square_bot (A : U) (a0 a1 : A) (b0 b1 : A)
---                   (top : Id A a0 a1)
---                   (bot : Id A b0 b1)
---                   (left : Id A a0 b0)
---                   (right : Id A a1 b1) 
---                   (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) 
---                   (bot' : Id A b0 b1) (p : Id (Id A b0 b1) bot bot') : (IdP (<x> Id A (top @ x) (bot' @ x)) left right) = 
---   <x> <y> comp A (sq @ x @ y) [(y = 1) -> <z> p @ z @ x ]
+whisker_square_bot (A : U) (a0 a1 : A) (b0 b1 : A)
+                 (top : Id A a0 a1)
+                 (bot : Id A b0 b1)
+                 (left : Id A a0 b0)
+                 (right : Id A a1 b1) 
+                 (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) 
+                 (bot' : Id A b0 b1) (p : Id (Id A b0 b1) bot bot') : (IdP (<x> Id A (top @ x) (bot' @ x)) left right) = 
+ <x> <y> comp A (sq @ x @ y) [(y = 1) -> <z> p @ z @ x ]
 
--- whisker_square_top (A : U) (t0 t1 : A) (b0 b1 : A)
---                    (top : Id A t0 t1)
---                    (bot : Id A b0 b1)
---                    (left : Id A t0 b0)
---                    (right : Id A t1 b1) 
---                    (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) 
---                    (top' : Id A t0 t1) (p : Id (Id A t0 t1) top top') : (IdP (<x> Id A (top' @ x) (bot @ x)) left right) = 
---   <x> <y> comp A (sq @ x @ y) [(y = 0) -> <z> p @ z @ x]
+whisker_square_top (A : U) (t0 t1 : A) (b0 b1 : A)
+                   (top : Id A t0 t1)
+                   (bot : Id A b0 b1)
+                   (left : Id A t0 b0)
+                   (right : Id A t1 b1) 
+                   (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) 
+                   (top' : Id A t0 t1) (p : Id (Id A t0 t1) top top') : (IdP (<x> Id A (top' @ x) (bot @ x)) left right) = 
+  <x> <y> comp A (sq @ x @ y) [(y = 0) -> <z> p @ z @ x]
 
 -- normal form is pretty long
 useIsEquivPropHeterogeneously (A B : U) (f g : A -> B) (p : Id (A -> B) f g) 
@@ -126,24 +132,24 @@ data S1 = base
         | loop <i> [(i=0) -> base, (i=1) -> base]
 
 -- helpful abbreviations
-loopS1 : U = Id S1 base base
+OmegaS1 : U = Id S1 base base
 
-compS1 (p : loopS1) (q : loopS1) : loopS1 = <x> comp S1 (p @ x) [(x=1) -> q]
-loopS1_1 : loopS1 = <i> loop{S1} @ i
-loopS1_2 : loopS1 = compS1 loopS1_1 loopS1_1
+compS1 (p : OmegaS1) (q : OmegaS1) : OmegaS1 = <x> comp S1 (p @ x) [(x=1) -> q]
+loopS1 : OmegaS1 = <i> loop{S1} @ i
+loopS1_2 : OmegaS1= compS1 loopS1 loopS1
 
 -- "rotation by angle x"
 -- adds loops
 
 rotLoop : (a : S1) -> Id S1 a a = split
-  base -> loopS1_1
-  loop @ i -> constSquare S1 base loopS1_1 @ i
+  base -> loopS1
+  loop @ i -> constSquare S1 base loopS1 @ i
 
 rot : S1 -> S1 -> S1 = split
   base -> (\ (y : S1) -> y)
   loop @ i -> (\ (y : S1) -> rotLoop y @ i)
 
-loopS1_3 : Id S1 base base = compS1 loopS1_2 loopS1_1
+loopS1_3 : Id S1 base base = compS1 loopS1_2 loopS1
 test23 : IdP (<s> Id S1 (loopS1_3 @ s) (loopS1_3 @ s)) loopS1_2 loopS1_2 = <x> <y> rot (loopS1_3 @ x) (loopS1_2 @ y)
 test23_diag : Id S1 base base = <x> test23 @ x @ x
 
@@ -241,6 +247,7 @@ test (a : S1) (b : S1) : S1 = (transport (rotId a) (transport (<x> rotId a @ -x)
 gluens_1 (a : S1) (b : S1) : Id S2 north south = 
          <x> merS2 (transport (<z> rotId a @ -z) b) @ x
 
+-- FIXME boundary checking doesn't work with referene to rot_comm because it's a hole
 gluens_2 (a : S1) (b : S1) (rot_comm : (a : S1) (b : S1) -> Id S1 (rot a b) (rot b a))
          : IdP (<x> H (gluens_1 a b @ x)) a b = 
   hom_to_het_left S1 S1 (<x> H (gluens_1 a b @ x)) a b 
@@ -251,6 +258,56 @@ gluens (a : S1) (b : S1) : Id TH (in_north a) (in_south b) =
         gluens_2 a b rot_comm @ x)
 
 -- ----------------------------------------------------------------------
+-- S3 to TH
+
+-- FIXME: too slow with reference to gluens
+S3_to_TH_merid_merid (gluens : (a : S1) (b : S1) -> Id TH (in_north a) (in_south b))
+                     (b : S1) :
+                     Id (Id TH (in_north base) (in_north base)) (<x> in_north (loopS1 @ x)) (<_> in_north base) = 
+          whisker_square_top TH
+                 (in_north base) (in_north base) (in_north base) (in_north base)
+                 roundtrip (<_> in_north base) (<x> in_north (loopS1 @ x)) (<_> in_north base)
+                 gluetwice'
+                 (<_> (in_north base)) adjust
+    where
+        roundtrip : (Id TH (in_north base) (in_north base)) = (<x> comp TH (gluens base b @ x) [(x = 1) -> <x> (gluens base b @ -x)])
+
+        adjust : Id (Id TH (in_north base) (in_north base))
+                    roundtrip
+                    (<_> (in_north base)) = 
+                    (comp_inv_r TH (in_north base) (in_south b) (<x> (gluens base b @ x)))
+
+        gluens_loop : IdP (<x> Id TH (gluens base b @ x) (gluens base b @ x)) (<x> in_north (loopS1 @ x)) (<_> in_south b) = 
+            <x> <y> (gluens (loopS1 @ y) b) @ x  
+
+        gluens_base : IdP (<x> Id TH (gluens base b @ -x) (gluens base b @ -x)) (<_> in_south b) (<_> in_north base) = 
+            <x> <y> (gluens base b) @ -x  
+
+        gluetwice : IdP (<x> Id TH (roundtrip@x) (roundtrip @ x)) (<x> in_north (loopS1 @ x)) (<_> in_north base) = 
+            <x> <y> comp TH (gluens_loop @ x @ y) [(x = 1) -> <x> (gluens_base @ x @ y)]
+
+        gluetwice' : IdP (<x> Id TH (roundtrip@x) (in_north base)) (<x> in_north (loopS1 @ x)) (<_> in_north base) = 
+          -- FIXME: isn't this the normal form? <x> <y> comp TH (gluetwice @ x @ y) [(y = 1) -> <z> adjust @ z @ x ]
+          --        "incompatible system"
+          whisker_square_bot TH
+                 (in_north base) (in_north base) (in_north base) (in_north base)
+                 roundtrip roundtrip (<x> in_north (loopS1 @ x)) (<_> in_north base)
+                 gluetwice
+                 (<_> (in_north base)) (adjust)
+
+-- FIXME: too slow with reference to gluens
+S3_to_TH_merid (gluens : (a : S1) (b : S1) -> Id TH (in_north a) (in_south b)) : (a : S2) -> Id TH (in_north base) (in_north base) = split
+   north -> (<x> in_north (loopS1 @ x)) -- whole loop around the boundary
+   south -> (<_> in_north base) -- these would be divided up differently if we had more points
+   merid b @ y -> S3_to_TH_merid_merid gluens b @ y
+
+S3_to_TH : S3 -> TH = split
+  north -> in_north base 
+  south -> in_north base -- would be in_north(S) but there's only one point
+  merid a @ x -> S3_to_TH_merid gluens a @ x
+
+
+-- ----------------------------------------------------------------------
 -- examples 
 
 loopS2_1' : Id (Id S2 north north) 
@@ -258,11 +315,14 @@ loopS2_1' : Id (Id S2 north north)
                (<y> comp S2 (merid{S2} base @ y) [ (y = 1) -> <y> merid{S2} base @ -y ]) =
          <x> <y> comp S2 (merid{S2} (loop{S1} @x) @ y) [ (y = 1) -> <y> merid{S2} base @ -y ]
 
-loopS2_1 : Id (Id S2 north north) (<_> north) (<_> north) = 
+loopS2 : Id (Id S2 north north) (<_> north) (<_> north) = 
     <z> comp (Id S2 north north) 
              (loopS2_1' @ z)
              [(z = 0) -> comp_inv_r S2 north south (<y> merid{S2} base @ y),
               (z = 1) -> comp_inv_r S2 north south (<y> merid{S2} base @ y)]
+
+loopS3 : Id (Id (Id S3 north north) (<_> north) (<_> north)) (<_> <_> north) (<_> <_> north) = 
+       ?
 
 apOmega2 (A : U) (a : A) (B : A -> U) 
          (f : (x : A) -> B x)
