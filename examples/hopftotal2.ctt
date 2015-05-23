@@ -1,4 +1,4 @@
-module hopftotal where
+module hopftotal2 where
 
 import prelude
 import equiv
@@ -202,59 +202,17 @@ H : S2 -> U = split
 TH : U = (c : S2) * H c
 
 -- ----------------------------------------------------------------------
--- S1 join S1 constructors for S3
+-- Join
 
-in_boundary : S1 -> S3 = split 
-    base -> north
-    loop @ x -> merS3ns @ x
-    
--- if it were a fat suspension, this would be inm(inm _),
--- but that doesn't exist because the suspension has been thinned, so drag it southward
-in_middle (x : S1) : S3 = south
+data Join (A : U) (B : U) = joinl (a : A)
+                          | joinr (b : B)
+                          | join (a:A) (b : B) <i> [(i=0) -> joinl a, (i=1) -> joinr b]
 
--- pretty short normal form
-gluebm_adjust (A : U) (t1 : A) : Unit -> (b1 : A) (right : Id A t1 b1) 
-        (t0 b0 : A) 
-        (top : Id A t0 b1) 
-        (bot : Id A b0 b1)
-        (left : Id A t0 b0)
-        (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > b1)) ->
-        IdP (<x> Id A ((compId A t0 b1 t1 top (<z> right @ -z)) @ x) (bot @ x)) left right = split 
-   tt -> 
-      J A t1 ( \ (b1 : A) (right : Id A t1 b1) ->  (t0 b0 : A) 
-                 (top : Id A t0 b1) (bot : Id A b0 b1)
-                 (left : Id A t0 b0) (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > b1)) 
-                 -> IdP (<x> Id A ((compId A t0 b1 t1 top (<z> right @ -z)) @ x) (bot @ x)) left right) 
-             ( \ (t0 b0 : A)  (top : Id A t0 t1) (bot : Id A b0 t1)
-                 (left : Id A t0 b0) (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > t1)) -> sq)
-
-
-gluebm : (a : S1) (b : S1) -> Id S3 (in_boundary a) (in_middle b) = split 
-  base -> \ (b : S1) -> <y> merS3 south @ y
-  loop @ x -> \ (b : S1) -> square b @ x where
-
-    line (b : S1) : Id (Id S3 north south) (merS3 north) (merS3 south) = <x> merS3 (merid{S2} b @ x)
-    
-    square1 (b : S1) : IdP (<x> Id S3 (merS3 south @ x) south) (merS3 south) (<_> south) = 
-            <x> <y> (merS3 south @ (x \/ y))
-    
-    square2 (b : S1) : IdP (<x> Id S3 (merS3 north @ x) south) (merS3 south) (<_> south) = 
-            <x> <y> comp S3 (square1 b @ x @ y) [ (y = 0) -> <z> line b @ -z @ x ]
-    
-    square (b : S1) : IdP (<x> Id S3 (merS3ns @ x) south) (merS3 south) (merS3 south) = 
-           gluebm_adjust S3 north ABSTRACT south (merS3 south) north south (merS3 north) (<_> south) (merS3 south) (square2 b)
-
-TH_to_S3' : (a : S2) -> H a -> S3 = split
-   north -> in_boundary
-   south -> in_middle
-   merid a @ x -> 
-         (funext_het_l_constant_range S1 S1 (<x> (H (merid{S2} a @ x))) ABSTRACT S3 in_boundary in_middle 
-                                      (\ (b : S1) -> gluebm b (rot a b)))@x
-
-TH_to_S3 (p : TH) : S3 = TH_to_S3' p.1 p.2
 
 -- ----------------------------------------------------------------------
--- S1 join S1 constructors for TH
+-- S1 join S1 and TH
+
+joinS1S1 (a : S1) (b : S1) : Id (Join S1 S1) (joinl a) (joinr b) = <x> join{Join S1 S1} a b @ x
 
 merS2 (a : S1) : Id S2 north south = <y> merid{S2} a @ y
 
@@ -275,75 +233,175 @@ gluens_2 (a : S1) (b : S1) (rot_comm : (a : S1) (b : S1) -> Id S1 (rot a b) (rot
 gluens (a : S1) (b : S1) : Unit -> Id TH (in_north a) (in_south b) = split 
   tt -> 
     <x> (gluens_1 a b @ x , 
-         gluens_2 a b rot_comm NONABSTRACT @ x)
+         gluens_2 a b rot_comm ABSTRACT @ x)
+
+Join_to_TH : Join S1 S1 -> TH = split
+  joinl a -> in_north a
+  joinr b -> in_south b
+  join a b @ x -> gluens a b NONABSTRACT @ x
+
+TH_to_Join' : (x : S2) -> H x -> Join S1 S1 = split
+   north -> \ (a : S1) -> joinl a
+   south -> \ (a : S1) -> joinr a
+   merid a @ x -> 
+    (funext_het_l_constant_range S1 S1 (<x> (H (merid{S2} a @ x))) ABSTRACT (Join S1 S1) 
+                     (\ (a : S1) -> joinl a) (\ (a : S1) -> joinr a)
+                     (\ (b : S1) -> joinS1S1 b (rot a b)))@x
+
+TH_to_Join (p : TH) : Join S1 S1 = TH_to_Join' p.1 p.2
+
+-- JTH1 : (a : Join S1 S1) -> Id (Join S1 S1) (TH_to_Join (Join_to_TH a)) a = split
+--   joinl a -> <_> joinl a
+--   joinr b -> <_> joinr b
+--   join a b @ x -> ?
+
+-- IdP (<!0> Join (S1, S1))
+--   (funext_het_l_constant_range 
+--     (S1, S1, <!0> glue (S1) [ (!0 = 0) -> (S1,(rot (((rotIsEquiv a b).2).1),(\(y : S1) -> ((rotIsEquiv (((rotIsEquiv a b).2).1) y).2).1,(\(y : S1) -> <!0> ((rotIsEquiv (((rotIsEquiv a b).2).1) y).2).2 @ -!0,\(x : S1) -> <!0> ((rotIsEquiv (((rotIsEquiv a b).2).1) (rot (((rotIsEquiv a b).2).1) x)).1 ((((rotIsEquiv (((rotIsEquiv a b).2).1) (rot (((rotIsEquiv a b).2).1) x)).2).1,((rotIsEquiv (((rotIsEquiv a b).2).1) (rot (((rotIsEquiv a b).2).1) x)).2).2)) ((x,<!0> rot (((rotIsEquiv a b).2).1) x)) @ !0).1)))) ])
+--     (?)
+--     (Join (S1, S1))
+--     (\(a0 : S1) -> joinl a0)
+--     (\(a0 : S1) -> joinr a0) 
+--     (\(b0 : S1) -> <!0> join {Join (S1, S1)} b0 (rot (((rotIsEquiv a b).2).1) b0) @ !0) @ x 
+--     (gluens_2 (a, b, \(a0 b0 : S1) -> ? (a = a0, b = b0)) (?) @ x)) 
+--     (join {Join (S1, S1)} a b @ x)
+
+-- JTH2' : (a : S2) -> (h : H a) -> Id TH (Join_to_TH (TH_to_Join' a h)) (a,h) = split
+--   north -> \ (a : S1) -> <_> (north, a)
+--   south -> \ (b : S1) -> <_> (south, b)
+--   merid a @ x -> mcase a @ x where
+--     mcase (a : S1) : IdP (<x> (h : H (merS2 a @ x)) -> Id TH (Join_to_TH (TH_to_Join' (merS2 a @ x) h)) ((merS2 a @ x),h)) 
+--                          (\ (a : S1) -> <_> (north, a))
+--                          (\ (b : S1) -> <_> (south, b)) = 
+--         funext_het_l S1 S1 (<x> (H (merS2 a @ x)))
+--                      (\ (h : S1) -> Id TH (Join_to_TH (TH_to_Join' north h)) (north,h))
+--                      (\ (h : S1) -> Id TH (Join_to_TH (TH_to_Join' south h)) (south,h))
+--                      (<x> \ (h : H (merS2 a @ x)) -> Id TH (Join_to_TH (TH_to_Join' (merS2 a @ x) h)) ((merS2 a @ x),h)) 
+--                      (\ (a : S1) -> <_> (north, a))
+--                      (\ (b : S1) -> <_> (south, b))
+--                      ?
+
+-- (a00 : S1) -> IdP (<!0> IdP (<!1> Sigma (Susp (S1)) (\ (c : Susp (S1)) -> H c))
+--  (Join_to_TH (funext_het_l_constant_range (S1, S1, <!1> glue (S1) [ (!1 = 0) -> (S1,(rot a0,(\ (y : S1) -> ((rotIsEquiv a0 y).2).1,(\ (y : S1) -> <!0> ((rotIsEquiv a0 y).2).2 @ -!0,\ (x : S1) -> <!0> ((rotIsEquiv a0 (rot a0 x)).1 ((((rotIsEquiv a0 (rot a0 x)).2).1,((rotIsEquiv a0 (rot a0 x)).2).2)) ((x,<!0> rot a0 x)) @ !0).1)))) ])
+--                                           (?)
+--                                           (Join (S1, S1))
+--                                           (\ (a1 : S1) -> joinl a1)
+--                                           (\ (a1 : S1) -> joinr a1) 
+--                                           (\ (b : S1) -> <!0> join {Join (S1, S1)} b (rot a0 b) @ !0) @ !0 
+--                                                               (glueElem (rot a0 a00) [ (!0 = 0) -> a00 ])))
+--                                            ((merid {Susp (S1)} a0 @ !0,glueElem (rot a0 a00) [ (!0 = 0) -> a00 ]))) 
+--  (<!0> (north,a00)) 
+--  (<!0> (south,rot a0 a00))
 
 -- ----------------------------------------------------------------------
--- S3 to TH
+-- assoc of join
 
-S3_to_TH_merid_merid (b : S1) : Unit -> 
-                     Id (Id TH (in_north base) (in_north base)) (<x> in_north (loopS1 @ x)) (<_> in_north base) = split
-    tt ->
-          whisker_square_top TH
-                 (in_north base) (in_north base) (in_north base) (in_north base)
-                 roundtrip (<_> in_north base) (<x> in_north (loopS1 @ x)) (<_> in_north base)
-                 (gluetwice' NONABSTRACT) 
-                 (<_> (in_north base)) adjust
-    where
-        roundtrip : (Id TH (in_north base) (in_north base)) = (<x> comp TH (gluens base b NONABSTRACT @ x) [(x = 1) -> <x> (gluens base b NONABSTRACT @ -x)])
+rearrange (A : U) (t0 : A) (b0 b1 : A)
+          (bot : Id A b0 b1)
+          (left : Id A t0 b0)
+          (right : Id A t0 b1) 
+          (sq : IdP (<x> Id A t0 (bot @ x)) left right) :
+          (IdP (<x> Id A (left @ x) b1) right bot) = ?
 
-        adjust : Id (Id TH (in_north base) (in_north base))
-                    roundtrip
-                    (<_> (in_north base)) = 
-                    (comp_inv_r TH (in_north base) ABSTRACT (in_south b) (<x> (gluens base b NONABSTRACT @ x)))
+rearrange' (A : U) (t0 : A) (b0 b1 : A)
+           (newbot : Id A b0 b1)
+           (newleft : Id A t0 b0)
+           (newright : Id A t0 b1) 
+           (sq : IdP (<x> Id A (newleft @ x) b1) newright newbot) : (IdP (<x> Id A t0 (newbot @ x)) newleft newright) = ?
 
-        gluens_loop : IdP (<x> Id TH (gluens base b NONABSTRACT @ x) (gluens base b NONABSTRACT @ x)) (<x> in_north (loopS1 @ x)) (<_> in_south b) = 
-            <x> <y> (gluens (loopS1 @ y) b NONABSTRACT) @ x  
+jassoc_lr_l (A B C : U) : Join A B -> Join A (Join B C) = split 
+   joinl a -> joinl a
+   joinr b -> joinr (joinl b)
+   join a b @ x -> join{Join A (Join B C)} a (joinl b) @ x
 
-        gluens_base : IdP (<x> Id TH (gluens base b NONABSTRACT @ -x) (gluens base b NONABSTRACT @ -x)) (<_> in_south b) (<_> in_north base) = 
-            <x> <y> (gluens base b NONABSTRACT) @ -x  
+jassoc_lr_j (A B C : U) (c : C)
+            (rearrange : (A : U) (t0 : A) (b0 b1 : A)
+                  (bot : Id A b0 b1)
+                  (left : Id A t0 b0)
+                  (right : Id A t0 b1) 
+                  (sq : IdP (<x> Id A t0 (bot @ x)) left right) ->
+                  (IdP (<x> Id A (left @ x) b1) right bot))
+           : (ab : Join A B) -> Id (Join A (Join B C)) (jassoc_lr_l A B C ab) (joinr (joinr c)) = split 
+   joinl a -> <y> join{Join A (Join B C)} a (joinr c) @ y
+   joinr b -> <y> joinr (join{Join B C} b c @ y)
+   join a b @ x -> <y> rearrange (Join A (Join B C)) (joinl a) (joinr (joinl b)) (joinr (joinr c)) 
+                                 (<x> joinr (join{Join B C} b c @ x))
+                                 (<x> join{Join A (Join B C)} a (joinl b) @ x)
+                                 (<x> join{Join A (Join B C)} a (joinr c) @ x)
+                                 (<x> <y> join{Join A (Join B C)} a (join{Join B C} b c @ x) @ y)
+                        @ x @ y
 
-        gluetwice : Unit -> IdP (<x> Id TH (roundtrip@x) (roundtrip @ x)) (<x> in_north (loopS1 @ x)) (<_> in_north base) = split
-          tt ->
-            <x> <y> comp TH (gluens_loop @ x @ y) [(x = 1) -> <x> (gluens_base @ x @ y)]
+jassoc_lr (A B C : U) : Join (Join A B) C -> Join A (Join B C) = split
+    joinl ab -> jassoc_lr_l A B C ab
+    joinr c -> joinr (joinr c)
+    join ab c @ x -> jassoc_lr_j A B C c rearrange ab @ x
 
-        gluetwice' : Unit -> IdP (<x> Id TH (roundtrip@x) (in_north base)) (<x> in_north (loopS1 @ x)) (<_> in_north base) = split
-          -- FIXME: isn't this the normal form? <x> <y> comp TH (gluetwice @ x @ y) [(y = 1) -> <z> adjust @ z @ x ]
-          --        "incompatible system"
-          tt -> 
-           whisker_square_bot TH
-                 (in_north base) (in_north base) (in_north base) (in_north base)
-                 roundtrip roundtrip (<x> in_north (loopS1 @ x)) (<_> in_north base)
-                 (gluetwice NONABSTRACT)  -- finishes if you make this abstract
-                 (<_> (in_north base)) (adjust)
+jassoc_rl_r (A B C : U) : Join B C -> Join (Join A B) C = split 
+   joinl b -> joinl (joinr b)
+   joinr c -> joinr c
+   join b c @ x -> join{Join (Join A B) C} (joinr b) c @ x
 
-S3_to_TH_merid : (a : S2) -> Id TH (in_north base) (in_north base) = split
-   north -> (<x> in_north (loopS1 @ x)) -- whole loop around the boundary
-   south -> (<_> in_north base) -- these would be divided up differently if we had more points
-   merid b @ y -> S3_to_TH_merid_merid b ABSTRACT @ y
+jassoc_rl_j (A B C : U) (a : A)
+         (rearrange' : (A : U) (t0 : A) (b0 b1 : A)
+           (newbot : Id A b0 b1)
+           (newleft : Id A t0 b0)
+           (newright : Id A t0 b1) 
+           (sq : IdP (<x> Id A (newleft @ x) b1) newright newbot) ->
+           (IdP (<x> Id A t0 (newbot @ x)) newleft newright))
+ : (bc : Join B C) -> Id (Join (Join A B) C) (joinl (joinl a)) (jassoc_rl_r A B C bc) = split 
+   joinl b -> <x> joinl (join{Join A B} a b @ x)
+   joinr c -> <x> join{Join (Join A B) C} (joinl a) c @ x
+   join b c @ x -> <y>(rearrange' (Join (Join A B) C) (joinl (joinl a)) (joinl (joinr b)) (joinr c)
+                                  (<x> join{Join (Join A B) C} (joinr b) c @ x)
+                                  (<x> joinl (join{Join A B} a b @ x))
+                                  (<x> join{Join (Join A B) C} (joinl a) c @ x)
+                                  (<x><y> join{Join (Join A B) C} (join{Join A B} a b @ x) c @ y)
+                         )@x@y
 
-S3_to_TH : S3 -> TH = split
-  north -> in_north base 
-  south -> in_north base -- would be in_north(S) but there's only one point
-  merid a @ x -> S3_to_TH_merid a @ x
+jassoc_rl (A B C : U) : Join A (Join B C) -> Join (Join A B) C = split
+     joinl a -> joinl (joinl a)
+     joinr bc -> jassoc_rl_r A B C bc
+     join a bc @ x -> jassoc_rl_j A B C a rearrange' bc @ x
 
 -- ----------------------------------------------------------------------
--- composite 1
+-- suspension and join with booleans
 
-composite1_north : IdP(<x> Id S3 (TH_to_S3 (S3_to_TH_merid north @ x)) (merid{S3} north @ x)) (<_> north) (merS3 south) =
- gluebm_adjust S3 north ABSTRACT south (merS3 south) north north (merS3 north) (merS3 north) (<_> north) (<x> <_> merS3 north @ x)
+-- join Bool A is a "fat" suspension, with an inm construct including A, and paths from N to inm(x) to S
+-- inl true = N
+-- inl false = S
+-- inr x = inm x
 
-composite1_south : IdP(<x> Id S3 (TH_to_S3 (S3_to_TH_merid south @ x)) (merid{S3} south @ x)) (<_> north) (merS3 south) =
- <x> <y> merid{S3} south @ (x/\y)
+data Bool = true | false
 
-composite1_merid : (b : S2) -> IdP(<x> Id S3 (TH_to_S3 (S3_to_TH_merid b @ x)) (merid{S3} b @ x)) (<_> north) (merS3 south) = split
-  north -> composite1_north 
-  south -> composite1_south 
-  merid c @ x -> ?
+fatten (A : U) : Susp A -> Join Bool A = split
+   north -> joinl true
+   south -> joinl false
+   merid a @ x -> comp (Join Bool A) (join{Join Bool A} true a @ x) [(x = 1) -> <x> (join{Join Bool A} false a @ -x)]
 
--- composite1 : (a : S3) -> Id S3 (TH_to_S3 (S3_to_TH (a))) a = split
---   north -> <_> north
---   south -> merS3 south -- arbitrary
---   merid a @ x -> ?
+thinb (A : U) : Bool -> Susp A = split
+  true -> north
+  false -> south
+
+thin_j (A : U) (a : A) : (b : Bool) -> Id (Susp A) (thinb A b) south = split
+  true -> <x> merid{Susp A} a @ x
+  false -> <_> south
+
+thin (A : U) : Join Bool A -> Susp A = split
+   joinl b -> thinb A b
+   joinr _ -> south
+   join b a @ x -> thin_j A a b @ x
+
+fat_thin (A : U) : (t : Susp A) -> Id (Susp A) (thin A (fatten A t)) t = split
+  north -> <_> north
+  south -> <_> south
+  merid a @ x -> <_> merid{Susp A} a @ x
+
+thin_fat (A : U) : (f : Join Bool A) -> Id (Join Bool A) (fatten A (thin A f)) f = split
+  inl b -> ?
+  inr b -> ?
+  join b a @ x -> ?
+
+{-
 
 -- ----------------------------------------------------------------------
 -- pointed types
@@ -403,3 +461,4 @@ Omega3S3_to_Omega3TH : PointedMap (Omega (Omega (Omega S3P))) (Omega (Omega (Ome
 test : (Omega (Omega (Omega THP))).1 = Omega3S3_to_Omega3TH.1 loopS3
 
      
+-}
