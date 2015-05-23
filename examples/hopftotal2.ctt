@@ -1,3 +1,7 @@
+-- THe total space of the Hopf fibration is S3
+-- Dan Licata
+-- based on the proof by Guillaume Brunerie (see the HoTT Book)
+
 module hopftotal2 where
 
 import prelude
@@ -36,7 +40,7 @@ hom_to_het_right (A0 : U) : (A1 : U) (A : Id U A0 A1)
          (p : Id A0 a0 (transport (<x> A @ -x) a1)) -> IdP A a0 a1)
        (\ (a0 : A0) (a1 : A0) (p : Id A0 (a0) a1) -> p)
   
-transport_inv_r (A0 : U) (A1 : U) (A : Id U A0 A1) (a1 : A1) 
+transport_inv (A0 : U) (A1 : U) (A : Id U A0 A1) (a1 : A1) 
                  : Id A1 (transport A (transport (<x> A @ -x) a1)) a1 = 
     J U A0 (\ (A1 : U) (A : Id U A0 A1) -> (a1 : A1) -> Id A1 (transport A (transport (<x> A @ -x) a1)) a1)
            (\ (a1 : A0) -> <_> a1)
@@ -244,7 +248,7 @@ gluens_2 (a : S1) (b : S1) (rot_comm : (a : S1) (b : S1) -> Id S1 (rot a b) (rot
          : Unit -> IdP (<x> H (gluens_1 a b @ x)) a b = split 
   tt -> 
     hom_to_het_left S1 S1 (<x> H (gluens_1 a b @ x)) a b 
-        (<x> comp S1 ((transport_inv_r S1 S1 (rotId a) b) @ x) [(x=0) -> (rot_comm a (transport (<x> rotId a @ -x) b))])
+        (<x> comp S1 ((transport_inv S1 S1 (rotId a) b) @ x) [(x=0) -> (rot_comm a (transport (<x> rotId a @ -x) b))])
 
 gluens (a : S1) (b : S1) : Unit -> Id TH (in_north a) (in_south b) = split 
   tt -> 
@@ -429,23 +433,25 @@ jassoc_c1_j (A B C : U) (c : C) : (ab : Join A B)
 
        innerfront : FrontType = (<x><y> join{Join (Join A B) C} (join{Join A B} a b @ x) c @ y)
 
-       InnerFrontType : U = 
+       MiddleStepType : U = 
                   IdP (<x> Id (Join (Join A B) C) 
                            (joinl (joinl a))
                            (join{Join (Join A B) C} (joinr b) c @ x))
                       (<x> joinl (join{Join A B} a b @ x))
                       (<x> join{Join (Join A B) C} (joinl a) c @ x)
 
-       rpath : Id U InnerFrontType FrontType = 
+       rpath : Id U MiddleStepType FrontType = 
                               rearrange_path (Join (Join A B) C) (joinl (joinl a)) (joinl (joinr b)) (joinr c)
                                              (<x> join{Join (Join A B) C} (joinr b) c @ x)
                                              (<x> joinl (join{Join A B} a b @ x))
                                              (<x> join{Join (Join A B) C} (joinl a) c @ x)
 
+       -- why the next step works
        frontreduced : FrontType = transport rpath (transport (<x> rpath @ -x) innerfront)
+       deq : Id FrontType front frontreduced = <_> frontreduced
 
        collapse : Unit -> Id FrontType front innerfront = split 
-         tt -> transport_inv_r InnerFrontType FrontType rpath innerfront
+         tt -> transport_inv MiddleStepType FrontType rpath innerfront
 
        want : IdP(<z> IdP (<x> Id (Join (Join A B) C)
                                           (front @ z @ x) -- front
@@ -461,10 +467,53 @@ jassoc_c1 (A B C : U) : (j : Join (Join A B) C) -> Id (Join (Join A B) C) (jasso
   joinr c -> <_> joinr c
   join ab c @ x -> <y> jassoc_c1_j A B C c ab @ x @ y
 
--- FIMXE do other direction too
+-- other composite
+
+jassoc_c2_r (A B C : U) : (bc : (Join B C)) -> Id (Join A (Join B C)) (jassoc_lr A B C (jassoc_rl_r A B C bc)) (joinr bc) = split 
+  joinl b -> <_> joinr (joinl b)
+  joinr c -> <_> joinr (joinr c)
+  join b c @ x -> <_> joinr (join{Join B C} b c @ x)
+
+jassoc_c2_j (A B C : U) (a : A) : (bc : Join B C) 
+         -> IdP (<x> Id (Join A (Join B C)) (jassoc_lr A B C (jassoc_rl_j A B C a bc @ x)) (join{Join A (Join B C)} a bc @ x))
+                (<_> joinl a)
+                (jassoc_c2_r A B C bc) = split 
+  joinl b -> <x> <y> join{Join A (Join B C)} a (joinl b) @ x
+  joinr c -> <x> <y> join{Join A (Join B C)} a (joinr c) @ x
+  join b c @ z -> <x> <y> comp (Join A (Join B C)) ((innerfront @ z @ x)) [(y=0) -> <y> collapse ABSTRACT @ -y @ z @ x]  where 
+       FrontType : U = IdP (<x> Id (Join A (Join B C))
+                                   (joinl a)
+                                   (joinr (join{Join B C} b c @ x)))
+                           (<y> join {Join A (Join B C)} a (joinl b) @ y) 
+                           (<y> join {Join A (Join B C)} a (joinr c) @ y)
+
+       front : FrontType = <x><y>(jassoc_lr A B C (jassoc_rl_j A B C a (join{Join B C} b c @ x)  @ y))
+       innerfront : FrontType = <x><y>(join{Join A (Join B C)} a (join{Join B C} b c @ x) @ y)
+
+       MiddleStepType : U = IdP (<x> Id (Join A (Join B C))
+                                        (join {Join A (Join B C)} a (joinl b) @ x)
+                                        (joinr (joinr c)))
+                                (<y> join {Join A (Join B C)} a (joinr c) @ y)
+                                (<y> (joinr (join{Join B C} b c @ y)))
+
+       rpath : Id U FrontType MiddleStepType = 
+         rearrange_path (Join A (Join B C)) (joinl a) (joinr (joinl b)) (joinr (joinr c))
+                        (<x> joinr (join{Join B C} b c @ x))
+                        (<y> join {Join A (Join B C)} a (joinl b) @ y) 
+                        (<y> join {Join A (Join B C)} a (joinr c) @ y)
+
+       collapse : Unit -> Id FrontType front innerfront = split 
+         tt -> transport_inv MiddleStepType FrontType (<x> rpath @ -x) innerfront
+
+jassoc_c2 (A B C : U) : (j : Join A (Join B C)) -> Id (Join A (Join B C)) (jassoc_lr A B C (jassoc_rl A B C j)) j = split 
+    joinl a -> <_> joinl a
+    joinr bc -> jassoc_c2_r A B C bc
+    join a bc @ x -> <y> jassoc_c2_j A B C a bc @ x @ y
+
+-- equivalence
 
 Join_assoc_path (A B C : U) : Id U (Join A (Join B C)) (Join (Join A B) C) = 
-  isoId (Join A (Join B C)) (Join (Join A B) C) (jassoc_rl A B C) (jassoc_lr A B C) (jassoc_c1 A B C) ?
+  isoId (Join A (Join B C)) (Join (Join A B) C) (jassoc_rl A B C) (jassoc_lr A B C) (jassoc_c1 A B C) (jassoc_c2 A B C)
 
 -- ----------------------------------------------------------------------
 -- suspension and join with booleans
@@ -593,9 +642,31 @@ S3_is_JoinS1S1 : Id U S3 (Join S1 S1) =
                              (Join S1 S1)
                              (<x> Join (JoinBool_is_Susp Bool @ x) S1)
                              (<x> Join (S1_1_is_S1_2 @ -x) S1))))
-                                    
-  
 
+-- ----------------------------------------------------------------------
+-- tests                                    
+  
+test : (Join S1 S1) = transport (S3_is_JoinS1S1) north
+
+t (x : S3) : Join S1 S1 = transport (S3_is_JoinS1S1) x
+
+path3 : IdP(<z> IdP (<x> IdP (<y> S3)
+                            (merid{S3} north @ x)
+                            (merid{S3} south @ x))
+              (<y> north) 
+              (<y> south) ) 
+           (<x> <y> merid{S3} (merid{S2} base @ y) @ x) 
+           (<x> <y> merid{S3} (merid{S2} base @ y) @ x) = 
+        <z> <x> <y> merid{S3} (merid{S2} (loop{S1} @ z) @ y) @ x
+
+test2 : IdP(<z> IdP (<x> IdP (<y> Join S1 S1)
+                            (t (merid{S3} north @ x))
+                            (t (merid{S3} south @ x)))
+              (<y> t north) 
+              (<y> t south) ) 
+           (<x> <y> t (merid{S3} (merid{S2} base @ y) @ x))
+           (<x> <y> t (merid{S3} (merid{S2} base @ y) @ x)) = 
+        <z> <x> <y> t (path3 @ z @ x @ y)
 
 {-
 
