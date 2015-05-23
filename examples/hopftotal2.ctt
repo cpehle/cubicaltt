@@ -67,9 +67,6 @@ funext_het_l (A0 A1 : U) (A : Id U A0 A1) :
                        (f : (a0 : A0) -> IdP (<x> (B @ x) a0) (f0 a0) (f1 a0)) 
                        -> <x> \ (a : A0) -> f a @ x) 
                     A1 A
-             -- FIXME: doesn't have the right boundary?
-             -- <x> \ (a : A @ x) -> transport (<w> (B @ x) ((transport_inv_r A0 (A@x) (<z> A @ (x /\ z)) a) @ w))
-             --                                ((f (transport (<z> A @ (x /\ -z)) a)) @ x)
 
 funext_het_l_constant_range (A0 A1 : U) (A : Id U A0 A1) : Unit -> 
                             (B : U)
@@ -87,13 +84,6 @@ funext_het_l_constant_range (A0 A1 : U) (A : Id U A0 A1) : Unit ->
                        (f : (a0 : A0) -> Id B (f0 a0) (f1 a0)) 
                        -> <x> \ (a : A0) -> f a @ x) 
                     A1 A
-
--- funext_het (A0 A1 : U) (A : Id U A0 A1)
---            (B0 : A0 -> U) (B1 : A1 -> U) (B : IdP (<x> A @ x -> U) B0 B1) 
---            (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A1) -> B1 a1) 
---            (f : (a0 : A0) (a1 : A1) (a : IdP A a0 a1) 
---                  -> IdP (<x> (B @ x) (a @ x)) (f0 a0) (f1 a1)) :
---            IdP (<x> (a : A @ x) -> (B @ x) a) f0 f1 = <x> \ (a : A @ x) -> f ? ? ? @ x
 
 whisker_square_bot (A : U) (a0 a1 : A) (b0 b1 : A)
                  (top : Id A a0 a1)
@@ -195,7 +185,19 @@ rotIsEquiv : (a : S1) -> isEquiv S1 S1 (rot a) = split
 
 rotId (x : S1) : Id U S1 S1 = isEquivEq S1 S1 (rot x) (rotIsEquiv x)
 
-rot_comm (a : S1) (b : S1) : Id S1 (rot a b) (rot b a) = ?
+rot_unit_r : (a : S1) -> Id S1 (rot a base) a = split
+   base -> <_> base
+   loop@x -> <_> loop{S1}@x
+
+rot_comm_square : (a : S1) -> IdP (<x> Id S1 (rot a (loop{S1}@x)) (rotLoop a @ x))
+                                  (rot_unit_r a)
+                                  (rot_unit_r a) = split
+   base -> <x><y>loop{S1}@x
+   loop@z -> <x> <y> (rotLoop (loop{S1}@z) @ x)
+
+rot_comm (a : S1) : (b : S1) -> Id S1 (rot a b) (rot b a) = split
+   base -> rot_unit_r a
+   loop @ x -> rot_comm_square a @ x
 
 -- ----------------------------------------------------------------------
 -- suspensions 
@@ -243,8 +245,7 @@ in_south (a : S1) : (c : S2) * H c = (south , a)
 gluens_1 (a : S1) (b : S1) : Id S2 north south = 
          <x> merS2 (transport (<z> rotId a @ -z) b) @ x
 
--- FIXME boundary checking doesn't work with referene to rot_comm because it's a hole
-gluens_2 (a : S1) (b : S1) (rot_comm : (a : S1) (b : S1) -> Id S1 (rot a b) (rot b a))
+gluens_2 (a : S1) (b : S1) 
          : Unit -> IdP (<x> H (gluens_1 a b @ x)) a b = split 
   tt -> 
     hom_to_het_left S1 S1 (<x> H (gluens_1 a b @ x)) a b 
@@ -253,7 +254,7 @@ gluens_2 (a : S1) (b : S1) (rot_comm : (a : S1) (b : S1) -> Id S1 (rot a b) (rot
 gluens (a : S1) (b : S1) : Unit -> Id TH (in_north a) (in_south b) = split 
   tt -> 
     <x> (gluens_1 a b @ x , 
-         gluens_2 a b rot_comm ABSTRACT @ x)
+         gluens_2 a b ABSTRACT @ x)
 
 Join_to_TH : Join S1 S1 -> TH = split
   joinl a -> in_north a
