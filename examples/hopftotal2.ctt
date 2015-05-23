@@ -134,9 +134,25 @@ comp_inv_r2 (A : U) (a0 : A) : Unit -> (a1 : A) (p : Id A a0 a1)
              Id (Id A a1 a1) (<y> comp A a0 [ (y = 0) -> p, (y = 1) -> <y> p @ y ]) (<_> a1))
           (<_> <_> a0)
 
--- connection (A : U) (a b : A) (p : Id A a b) : IdP (<x> Id A (p @ x) b) p (<_> b) = 
---            <y><x> p @ (x \/ y)
+eliminate_composite_top_right (A : U) (t0 t1 b0 b1 : A) 
+        (top : Id A t0 b1) 
+        (bot : Id A b0 b1)
+        (left : Id A t0 b0)
+        (right : Id A t1 b1) 
+        (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > b1)) : 
+        Unit -> IdP (<x> Id A ((compId A t0 b1 t1 top (<z> right @ -z)) @ x) (bot @ x)) left right = split 
+   tt -> ?
+      -- J A t1 ( \ (b1 : A) (right : Id A t1 b1) ->  (t0 b0 : A) 
+      --            (top : Id A t0 b1) (bot : Id A b0 b1)
+      --            (left : Id A t0 b0) (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > b1)) 
+      --            -> IdP (<x> Id A ((compId A t0 b1 t1 top (<z> right @ -z)) @ x) (bot @ x)) left right) 
+      --        ( \ (t0 b0 : A)  (top : Id A t0 t1) (bot : Id A b0 t1)
+      --            (left : Id A t0 b0) (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > t1)) -> sq)
 
+-- ----------------------------------------------------------------------
+-- booleans
+
+data Bool = true | false
 
 -- ----------------------------------------------------------------------
 -- circle
@@ -296,32 +312,59 @@ TH_to_Join (p : TH) : Join S1 S1 = TH_to_Join' p.1 p.2
 -- ----------------------------------------------------------------------
 -- assoc of join
 
+inv_path (A : U) (a b : A) : Id U (Id A a b) (Id A b a) = 
+   isoId (Id A a b) (Id A b a) 
+         (\ (p : Id A a b) -> <x> p @ -x)
+         (\ (p : Id A b a) -> <x> p @ -x)
+         (\ (p : Id A b a) -> <_> p)
+         (\ (p : Id A a b) -> <_> p)
+
+rearrange_path (A : U) (t0 : A) (b0 b1 : A)
+             (bot : Id A b0 b1)
+             (left : Id A t0 b0)
+             (right : Id A t0 b1) :
+             Id U (IdP (<x> Id A t0 (bot @ x)) left right) 
+                  (IdP (<x> Id A (left @ x) b1) right bot) = 
+ J A b0 (\ (b1 : A) (bot : Id A b0 b1) -> 
+             (left : Id A t0 b0)
+             (right : Id A t0 b1) ->
+             Id U (IdP (<x> Id A t0 (bot @ x)) left right) 
+                  (IdP (<x> Id A (left @ x) b1) right bot))
+        (\ (left : Id A t0 b0)
+           (right : Id A t0 b0) ->
+             J A t0 (\ (b0 : A) (left : Id A t0 b0) -> 
+                       (right : Id A t0 b0) ->
+                         Id U (IdP (<x> Id A t0 b0) left right) 
+                              (IdP (<x> Id A (left @ x) b0) right (<_> b0)))
+                (\ (right : Id A t0 t0) -> 
+                   inv_path (Id A t0 t0) (<_> t0) right)
+                b0 left right)
+        b1 bot left right
+
 rearrange (A : U) (t0 : A) (b0 b1 : A)
           (bot : Id A b0 b1)
           (left : Id A t0 b0)
           (right : Id A t0 b1) 
-          (sq : IdP (<x> Id A t0 (bot @ x)) left right) :
-          (IdP (<x> Id A (left @ x) b1) right bot) = ?
+          (sq : IdP (<x> Id A t0 (bot @ x)) left right) : 
+          (IdP (<x> Id A (left @ x) b1) right bot) = 
+  transport (rearrange_path A t0 b0 b1 bot left right) sq
 
 rearrange' (A : U) (t0 : A) (b0 b1 : A)
            (newbot : Id A b0 b1)
            (newleft : Id A t0 b0)
            (newright : Id A t0 b1) 
-           (sq : IdP (<x> Id A (newleft @ x) b1) newright newbot) : (IdP (<x> Id A t0 (newbot @ x)) newleft newright) = ?
+           (sq : IdP (<x> Id A (newleft @ x) b1) newright newbot) :
+           (IdP (<x> Id A t0 (newbot @ x)) newleft newright) =
+  transport (<x> rearrange_path A t0 b0 b1 newbot newleft newright @ -x) sq
+
+-- first map
 
 jassoc_lr_l (A B C : U) : Join A B -> Join A (Join B C) = split 
    joinl a -> joinl a
    joinr b -> joinr (joinl b)
    join a b @ x -> join{Join A (Join B C)} a (joinl b) @ x
 
-jassoc_lr_j (A B C : U) (c : C)
-            (rearrange : (A : U) (t0 : A) (b0 b1 : A)
-                  (bot : Id A b0 b1)
-                  (left : Id A t0 b0)
-                  (right : Id A t0 b1) 
-                  (sq : IdP (<x> Id A t0 (bot @ x)) left right) ->
-                  (IdP (<x> Id A (left @ x) b1) right bot))
-           : (ab : Join A B) -> Id (Join A (Join B C)) (jassoc_lr_l A B C ab) (joinr (joinr c)) = split 
+jassoc_lr_j (A B C : U) (c : C) : (ab : Join A B) -> Id (Join A (Join B C)) (jassoc_lr_l A B C ab) (joinr (joinr c)) = split 
    joinl a -> <y> join{Join A (Join B C)} a (joinr c) @ y
    joinr b -> <y> joinr (join{Join B C} b c @ y)
    join a b @ x -> <y> rearrange (Join A (Join B C)) (joinl a) (joinr (joinl b)) (joinr (joinr c)) 
@@ -334,20 +377,16 @@ jassoc_lr_j (A B C : U) (c : C)
 jassoc_lr (A B C : U) : Join (Join A B) C -> Join A (Join B C) = split
     joinl ab -> jassoc_lr_l A B C ab
     joinr c -> joinr (joinr c)
-    join ab c @ x -> jassoc_lr_j A B C c rearrange ab @ x
+    join ab c @ x -> jassoc_lr_j A B C c ab @ x
+
+-- second map
 
 jassoc_rl_r (A B C : U) : Join B C -> Join (Join A B) C = split 
    joinl b -> joinl (joinr b)
    joinr c -> joinr c
    join b c @ x -> join{Join (Join A B) C} (joinr b) c @ x
 
-jassoc_rl_j (A B C : U) (a : A)
-         (rearrange' : (A : U) (t0 : A) (b0 b1 : A)
-           (newbot : Id A b0 b1)
-           (newleft : Id A t0 b0)
-           (newright : Id A t0 b1) 
-           (sq : IdP (<x> Id A (newleft @ x) b1) newright newbot) ->
-           (IdP (<x> Id A t0 (newbot @ x)) newleft newright))
+jassoc_rl_j (A B C : U) (a : A) 
  : (bc : Join B C) -> Id (Join (Join A B) C) (joinl (joinl a)) (jassoc_rl_r A B C bc) = split 
    joinl b -> <x> joinl (join{Join A B} a b @ x)
    joinr c -> <x> join{Join (Join A B) C} (joinl a) c @ x
@@ -361,7 +400,68 @@ jassoc_rl_j (A B C : U) (a : A)
 jassoc_rl (A B C : U) : Join A (Join B C) -> Join (Join A B) C = split
      joinl a -> joinl (joinl a)
      joinr bc -> jassoc_rl_r A B C bc
-     join a bc @ x -> jassoc_rl_j A B C a rearrange' bc @ x
+     join a bc @ x -> jassoc_rl_j A B C a bc @ x
+
+-- first composite
+
+jassoc_c1_l (A B C : U) : (ab : (Join A B)) -> Id (Join (Join A B) C) (jassoc_rl A B C (jassoc_lr_l A B C ab)) (joinl ab) = split 
+  joinl a -> <_> joinl (joinl a)
+  joinr b -> <_> joinl (joinr b)
+  join a b @ x -> <_> joinl (join{Join A B} a b @ x)
+
+jassoc_c1_j (A B C : U) (c : C) : (ab : Join A B) 
+         -> IdP (<x> Id (Join (Join A B) C) (jassoc_rl A B C (jassoc_lr_j A B C c ab @ x)) (join{Join (Join A B) C} ab c @ x))
+                (jassoc_c1_l A B C ab) 
+                (<_> joinr c) = split 
+  joinl a -> <x> <y> join{Join (Join A B) C} (joinl a) c @ x
+  joinr b -> <x> <y> join{Join (Join A B) C} (joinr b) c @ x
+  join a b @ z -> want @ z  where 
+       -- FIXME x,y here should be z,x because it ends up on the left
+       FrontType : U = IdP (<x> Id (Join (Join A B) C) (joinl (join{Join A B} a b @ x)) (joinr c))
+                                 (<x> join{Join (Join A B) C} (joinl a) c @ x)
+                                 (<x> join{Join (Join A B) C} (joinr b) c @ x)
+
+       front : FrontType = <x> <y> jassoc_rl A B C (rearrange (Join A (Join B C)) (joinl a) (joinr (joinl b)) (joinr (joinr c)) 
+                                        (<x> joinr (join{Join B C} b c @ x))
+                                        (<x> join{Join A (Join B C)} a (joinl b) @ x)
+                                        (<x> join{Join A (Join B C)} a (joinr c) @ x)
+                                        (<x> <y> join{Join A (Join B C)} a (join{Join B C} b c @ x) @ y) @ x @ y)
+
+       innerfront : FrontType = (<x><y> join{Join (Join A B) C} (join{Join A B} a b @ x) c @ y)
+
+       InnerFrontType : U = 
+                  IdP (<x> Id (Join (Join A B) C) 
+                           (joinl (joinl a))
+                           (join{Join (Join A B) C} (joinr b) c @ x))
+                      (<x> joinl (join{Join A B} a b @ x))
+                      (<x> join{Join (Join A B) C} (joinl a) c @ x)
+
+       rpath : Id U InnerFrontType FrontType = 
+                              rearrange_path (Join (Join A B) C) (joinl (joinl a)) (joinl (joinr b)) (joinr c)
+                                             (<x> join{Join (Join A B) C} (joinr b) c @ x)
+                                             (<x> joinl (join{Join A B} a b @ x))
+                                             (<x> join{Join (Join A B) C} (joinl a) c @ x)
+
+       frontreduced : FrontType = transport rpath (transport (<x> rpath @ -x) innerfront)
+
+       collapse : Unit -> Id FrontType front innerfront = split 
+         tt -> transport_inv_r InnerFrontType FrontType rpath innerfront
+
+       want : IdP(<z> IdP (<x> Id (Join (Join A B) C)
+                                          (front @ z @ x) -- front
+                                          (join{Join (Join A B) C} (join{Join A B} a b @ z) c @ x)) -- back
+                          (<_> joinl (join{Join A B} a b @ z)) -- left
+                          (<_> joinr c) ) -- right
+                        (<x> <y> join{Join (Join A B) C} (joinl a) c @ x) -- top
+                        (<x> <y> join{Join (Join A B) C} (joinr b) c @ x) = -- bot
+            <z> <x> <y> comp (Join (Join A B) C) ((innerfront @ z @ x)) [(y=0) -> <y> collapse ABSTRACT @ -y @ z @ x]
+                                   
+jassoc_c1 (A B C : U) : (j : Join (Join A B) C) -> Id (Join (Join A B) C) (jassoc_rl A B C (jassoc_lr A B C j)) j = split 
+  joinl ab -> jassoc_c1_l A B C ab 
+  joinr c -> <_> joinr c
+  join ab c @ x -> <y> jassoc_c1_j A B C c ab @ x @ y
+
+-- FIMXE do other direction too
 
 -- ----------------------------------------------------------------------
 -- suspension and join with booleans
@@ -370,8 +470,6 @@ jassoc_rl (A B C : U) : Join A (Join B C) -> Join (Join A B) C = split
 -- inl true = N
 -- inl false = S
 -- inr x = inm x
-
-data Bool = true | false
 
 fatten (A : U) : Susp A -> Join Bool A = split
    north -> joinl true
@@ -396,10 +494,74 @@ fat_thin (A : U) : (t : Susp A) -> Id (Susp A) (thin A (fatten A t)) t = split
   south -> <_> south
   merid a @ x -> <_> merid{Susp A} a @ x
 
+thin_fat_b (A : U) : (b : Bool) -> Id (Join Bool A) (fatten A (thinb A b)) (joinl b) = split
+  true -> <_> joinl true
+  false -> <_> joinl false
+
+thin_fat_j (A : U) (a : A) : (b : Bool) 
+           -> IdP (<x> Id (Join Bool A) (fatten A (thin_j A a b @ x)) (join{Join Bool A} b a @ x))
+                  (thin_fat_b A b)
+                  (<x> join{Join Bool A} false a @ x) = split
+  true -> <x> <y> 
+     eliminate_composite_top_right (Join Bool A)
+                                   (joinl true) (joinl false) (joinl true) (joinr a)
+                                   (<x> join{Join Bool A} true a @ x)
+                                   (<x> join{Join Bool A} true a @ x)
+                                   (<_> joinl true)
+                                   (<x> join{Join Bool A} false a @ x)
+                                   (<x><_> join{Join Bool A} true a @ x)
+                                   ABSTRACT @ x @ y
+  false -> <x><y> join{Join Bool A} false a @ x/\y
+
 thin_fat (A : U) : (f : Join Bool A) -> Id (Join Bool A) (fatten A (thin A f)) f = split
-  inl b -> ?
-  inr b -> ?
-  join b a @ x -> ?
+  joinl b -> thin_fat_b A b
+  joinr a -> <x> join{Join Bool A} false a @ x
+  join b a @ x -> <y> thin_fat_j A a b @ x @ y
+
+-- ----------------------------------------------------------------------
+-- two point vs one point circle
+
+S1_1_to_2 : S1 -> Susp Bool = split
+  base -> north
+  loop @ x -> comp (Susp Bool)
+                   (merid{Susp Bool} true @ x)
+                   [(x=1) -> <x> (merid{Susp Bool} false @ -x)]
+
+S1_2_to_1_b : Bool -> Id S1 base base = split 
+  true -> <x> loop{S1} @ x
+  false -> <_> base
+
+S1_2_to_1 : Susp Bool -> S1 = split
+  north -> base
+  south -> base
+  merid b @ x -> S1_2_to_1_b b @ x
+
+S1_1_to_2_c1 : (x : S1) -> Id S1 (S1_2_to_1 (S1_1_to_2 x)) x = split
+  base -> <_> base
+  loop @ x -> <_> loop{S1} @ x
+
+S1_1_to_2_c2_merid : (b : Bool) 
+               -> IdP (<x> Id (Susp Bool) (S1_1_to_2 (S1_2_to_1_b b @ x)) (merid{Susp Bool} b @ x))
+                      (<_> north)
+                      (<x> merid{Susp Bool} false @ x) = split
+  true -> <x><y>
+     eliminate_composite_top_right (Susp Bool)
+                                   north north north south
+                                   (<x> merid {Susp (Bool)} true @ x)
+                                   (<x> merid {Susp (Bool)} true @ x)
+                                   (<_> north)
+                                   (<x> merid {Susp (Bool)} false @ x)
+                                   (<x><_> merid{Susp Bool} true @ x)
+                                   ABSTRACT @ x @ y
+  false -> <x><y> merid{Susp Bool} false @ (x/\y)
+
+S1_1_to_2_c2 : (x : Susp Bool) -> Id (Susp Bool) (S1_1_to_2 (S1_2_to_1 x)) x = split
+  north -> <_> north
+  south -> <x> merid{Susp Bool} false @ x
+  merid b @ x -> S1_1_to_2_c2_merid b @ x
+
+
+
 
 {-
 
