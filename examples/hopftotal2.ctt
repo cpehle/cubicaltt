@@ -463,6 +463,9 @@ jassoc_c1 (A B C : U) : (j : Join (Join A B) C) -> Id (Join (Join A B) C) (jasso
 
 -- FIMXE do other direction too
 
+Join_assoc_path (A B C : U) : Id U (Join A (Join B C)) (Join (Join A B) C) = 
+  isoId (Join A (Join B C)) (Join (Join A B) C) (jassoc_rl A B C) (jassoc_lr A B C) (jassoc_c1 A B C) ?
+
 -- ----------------------------------------------------------------------
 -- suspension and join with booleans
 
@@ -518,6 +521,9 @@ thin_fat (A : U) : (f : Join Bool A) -> Id (Join Bool A) (fatten A (thin A f)) f
   joinr a -> <x> join{Join Bool A} false a @ x
   join b a @ x -> <y> thin_fat_j A a b @ x @ y
 
+JoinBool_is_Susp (A : U) : Id U (Join Bool A) (Susp A) = 
+  isoId (Join Bool A) (Susp A) (thin A) (fatten A) (fat_thin A) (thin_fat A)
+
 -- ----------------------------------------------------------------------
 -- two point vs one point circle
 
@@ -560,7 +566,35 @@ S1_1_to_2_c2 : (x : Susp Bool) -> Id (Susp Bool) (S1_1_to_2 (S1_2_to_1 x)) x = s
   south -> <x> merid{Susp Bool} false @ x
   merid b @ x -> S1_1_to_2_c2_merid b @ x
 
+S1_1_is_S1_2 : Id U S1 (Susp Bool) = 
+  isoId S1 (Susp Bool) S1_1_to_2 S1_2_to_1 S1_1_to_2_c2 S1_1_to_2_c1
 
+-- ----------------------------------------------------------------------
+-- S3 is Join S1 S1
+
+compU (A B C : U) (p : Id U A B) (q : Id U B C) : Id U A C = 
+  <x> comp U (p @ x) [(x=1) -> q]
+
+S3_is_JoinS1S1 : Id U S3 (Join S1 S1) = 
+  compU S3
+        (Join Bool S2)
+        (Join S1 S1) 
+        (<x> JoinBool_is_Susp S2 @ -x)
+        (compU (Join Bool S2) 
+               (Join Bool (Join Bool S1))
+               (Join S1 S1)
+               (<x> Join Bool (JoinBool_is_Susp S1 @ -x))
+               (compU (Join Bool (Join Bool S1))
+                      (Join (Join Bool Bool) S1)
+                      (Join S1 S1)
+                      (Join_assoc_path Bool Bool S1)
+                      (compU (Join (Join Bool Bool) S1)
+                             (Join (Susp Bool) S1)
+                             (Join S1 S1)
+                             (<x> Join (JoinBool_is_Susp Bool @ x) S1)
+                             (<x> Join (S1_1_is_S1_2 @ -x) S1))))
+                                    
+  
 
 
 {-
