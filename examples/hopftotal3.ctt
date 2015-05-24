@@ -13,6 +13,14 @@ STUCK : Unit = ?
 -- ----------------------------------------------------------------------
 -- library
 
+compU (A B C : U) (p : Id U A B) (q : Id U B C) : Id U A C = 
+  <x> comp U (p @ x) [(x=1) -> q]
+
+Contractible (A : U) : U = (a : A) * ((b : A) -> Id A a b)
+
+Singleton_level (A : U) (a : A) : Contractible ((b : A) * Id A a b)  = 
+  ( (a , <_> a) , \ (bp : ((b : A) * Id A a b)) -> <x> (bp.2 @ x , <y> bp.2 @ (x/\y)) ) 
+
 ap (A : U) (B : A -> U) 
    (f : (x : A) -> B x)
    (a0 : A) (a1 : A) (a : Id A a0 a1) :
@@ -169,6 +177,13 @@ eliminate_composite_top_right (A : U) (t0 t1 b0 b1 : A)
       --        ( \ (t0 b0 : A)  (top : Id A t0 t1) (bot : Id A b0 t1)
       --            (left : Id A t0 b0) (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > t1)) -> sq)
 
+inv_path (A : U) (a b : A) : Id U (Id A a b) (Id A b a) = 
+   isoId (Id A a b) (Id A b a) 
+         (\ (p : Id A a b) -> <x> p @ -x)
+         (\ (p : Id A b a) -> <x> p @ -x)
+         (\ (p : Id A b a) -> <_> p)
+         (\ (p : Id A a b) -> <_> p)
+
 -- ----------------------------------------------------------------------
 -- booleans
 
@@ -316,6 +331,31 @@ data Join (A : U) (B : U) = joinl (a : A)
 -- ----------------------------------------------------------------------
 -- pushout and join
 
+Rot (a : S1) (b : S1) : U = (c : S1) * IdP (rotId c) a b
+
+Rot_level (a : S1) (b : S1) : Contractible (Rot a b) =
+ transport (<x> Contractible (((c : S1) * equiv c STUCK @ -x))) (Singleton_level S1 (transport (<x> rotId a @ -x) b))
+ where
+  equiv (c : S1) : Unit -> Id U (IdP (rotId c) a b) (Id S1 (transport (<x> rotId a @ -x) b) c) = split
+   tt ->
+    compU (IdP (rotId c) a b) 
+          (Id S1 (transport (rotId c) a) b)
+          (Id S1 (transport (<x> rotId a @ -x) b) c)
+          ?
+          (compU (Id S1 (rot c a) b)
+                 (Id S1 (rot a c) b)
+                 (Id S1 (transport (<x> rotId a @ -x) b) c)
+                 ?
+                 (compU (Id S1 (transport (rotId a) c) b)
+                        (Id S1 c (transport (<x> rotId a @ -x) b))
+                        (Id S1 (transport (<x> rotId a @ -x) b) c)
+                        ?
+                        (inv_path S1 c (transport (<x> rotId a @ -x) b))))
+
+findRot (a : S1) (b : S1) : Rot a b = (Rot_level a b).1
+
+anyRot (a : S1) (b : S1) (r : Rot a b) : Unit -> Id (Rot a b) (findRot a b) r = split tt -> (Rot_level a b).2 r
+  
 HP_to_Join : HP -> Join S1 S1 = split
   hpinl a -> joinl a
   hpinr b -> joinr b
@@ -325,8 +365,8 @@ Join_to_HP : Join S1 S1 -> HP = split
   joinl a -> hpinl a 
   joinr b -> hpinr b 
   join a b @ x -> hpglue{HP} a b 
-                             (transport (<x> rotId a @ -x) b)
-                             ? 
+                             ((findRot a b).1)
+                             ((findRot a b).2)
                              @ x
 
 HP_to_Join_c2 : (j : Join S1 S1) -> Id (Join S1 S1) (HP_to_Join (Join_to_HP j)) j = split 
@@ -337,18 +377,10 @@ HP_to_Join_c2 : (j : Join S1 S1) -> Id (Join S1 S1) (HP_to_Join (Join_to_HP j)) 
 HP_to_Join_c1 : (p : HP) -> Id HP (Join_to_HP (HP_to_Join p)) p = split 
   hpinl a -> <_> hpinl a
   hpinr b -> <_> hpinr b
-  hpglue a b c p @ x -> <y> hpglue{HP} a b ? ? @ x
-
+  hpglue a b c p @ x -> <y> hpglue{HP} a b ((anyRot a b (c , p) STUCK @ y).1) ((anyRot a b (c , p) STUCK @ y).2) @ x
 
 -- ----------------------------------------------------------------------
 -- assoc of join
-
-inv_path (A : U) (a b : A) : Id U (Id A a b) (Id A b a) = 
-   isoId (Id A a b) (Id A b a) 
-         (\ (p : Id A a b) -> <x> p @ -x)
-         (\ (p : Id A b a) -> <x> p @ -x)
-         (\ (p : Id A b a) -> <_> p)
-         (\ (p : Id A a b) -> <_> p)
 
 rearrange_path (A : U) (t0 : A) (b0 b1 : A)
              (bot : Id A b0 b1)
@@ -646,9 +678,6 @@ S1_1_is_S1_2 : Id U S1 (Susp Bool) =
 
 -- ----------------------------------------------------------------------
 -- S3 is Join S1 S1
-
-compU (A B C : U) (p : Id U A B) (q : Id U B C) : Id U A C = 
-  <x> comp U (p @ x) [(x=1) -> q]
 
 S3_is_JoinS1S1 : Id U S3 (Join S1 S1) = 
   compU S3

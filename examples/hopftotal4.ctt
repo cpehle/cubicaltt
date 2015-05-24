@@ -34,25 +34,34 @@ ap (A : U) (B : A -> U)
 fill0 (A0 : U) (A1 : U) (A : Id U A0 A1) (a0 : A0) : IdP A a0 (transport A a0) =
    <x> transport (<y> A @ (x/\y)) a0
 
-hom_to_het_left (A0 : U) : Unit -> (A1 : U) (A : Id U A0 A1)
-                (a0 : A0) (a1 : A1)
-                (p : Id A1 (transport A a0) a1) ->
-                IdP A a0 a1 = split 
-  tt ->
+hom_to_het_1_path (A0 : U) : (A1 : U) (A : Id U A0 A1)
+                (a0 : A0) (a1 : A1) ->
+                Id U (Id A1 (transport A a0) a1) (IdP A a0 a1) =
     J U A0 (\ (A1 : U) (A : Id U A0 A1) -> 
-           (a0 : A0) (a1 : A1)
-           (p : Id A1 (transport A a0) a1) -> IdP A a0 a1)
-           (\ (a0 : A0) (a1 : A0) (p : Id A0 (a0) a1) -> p)
+              (a0 : A0) (a1 : A1) -> Id U (Id A1 (transport A a0) a1) (IdP A a0 a1))
+           (\ (a0 : A0) (a1 : A0) -> <_> (Id A0 a0 a1) )
 
-hom_to_het_right (A0 : U) : (A1 : U) (A : Id U A0 A1)
-                (a0 : A0) (a1 : A1)
-                (p : Id A0 a0 (transport (<x> A @ -x) a1)) ->
-                IdP A a0 a1 = 
-  J U A0 (\ (A1 : U) (A : Id U A0 A1) -> 
-         (a0 : A0) (a1 : A1)
-         (p : Id A0 a0 (transport (<x> A @ -x) a1)) -> IdP A a0 a1)
-       (\ (a0 : A0) (a1 : A0) (p : Id A0 (a0) a1) -> p)
-  
+hom_to_het_1 (A0 : U) (A1 : U) (A : Id U A0 A1)
+                (a0 : A0) (a1 : A1)  
+                (p : Id A1 (transport A a0) a1) : IdP A a0 a1 = 
+  transport (hom_to_het_1_path A0 A1 A a0 a1) p
+
+hom_to_het_0_path (A0 : U) : (A1 : U) (A : Id U A0 A1)
+                (a0 : A0) (a1 : A1) ->
+                Id U (Id A0 a0 (transport (<x> A @ -x) a1)) (IdP A a0 a1) =
+    J U A0 (\ (A1 : U) (A : Id U A0 A1) -> 
+              (a0 : A0) (a1 : A1) -> Id U (Id A0 a0 (transport (<x> A @ -x) a1)) (IdP A a0 a1))
+           (\ (a0 : A0) (a1 : A0) -> <_> (Id A0 a0 a1) )
+
+move_transport_right_path (A0 : U) (A1 : U) (A : Id U A0 A1)
+                          (a0 : A0) (a1 : A1) :
+                          Id U (Id A1 (transport A a0) a1) (Id A0 a0 (transport (<x> A @ -x) a1)) =
+   compU (Id A1 (transport A a0) a1)
+         (IdP A a0 a1)
+         (Id A0 a0 (transport (<x> A @ -x) a1))
+         (hom_to_het_1_path A0 A1 A a0 a1)
+         (<x> hom_to_het_0_path A0 A1 A a0 a1 @ -x)
+
 transport_inv (A0 : U) (A1 : U) (A : Id U A0 A1) (a1 : A1) 
                  : Id A1 (transport A (transport (<x> A @ -x) a1)) a1 = 
     J U A0 (\ (A1 : U) (A : Id U A0 A1) -> (a1 : A1) -> Id A1 (transport A (transport (<x> A @ -x) a1)) a1)
@@ -224,7 +233,7 @@ rotIsEquiv : (a : S1) -> isEquiv S1 S1 (rot a) = split
    base -> idIsEquiv S1
    loop @ x -> rotIsEquiv_loop STUCK @ x
 
-rotId (x : S1) : Id U S1 S1 = isEquivEq S1 S1 (rot x) (rotIsEquiv x)
+rotpath (x : S1) : Id U S1 S1 = isEquivEq S1 S1 (rot x) (rotIsEquiv x)
 
 rot_unit_r : (a : S1) -> Id S1 (rot a base) a = split
    base -> <_> base
@@ -260,7 +269,7 @@ merS3ns : Id S3 north north = <x> comp S3 (merid{S3} north @ x) [(x=1) -> <y> me
 H : S2 -> U = split
   north -> S1
   south -> S1
-  merid a @ x -> rotId a @ x
+  merid a @ x -> rotpath a @ x
 
 -- total space of H
 TH : U = (c : S2) * H c
@@ -276,26 +285,26 @@ data Join (A : U) (B : U) = joinl (a : A)
 -- TH and Join
 
 -- evidence that a is the rotation of b
-Rot (a : S1) (b : S1) : U = (c : S1) * IdP (rotId c) a b
+Rot (a : S1) (b : S1) : U = (c : S1) * IdP (rotpath c) a b
 
 Rot_level (a : S1) (b : S1) : Contractible (Rot a b) =
- transport (<x> Contractible (((c : S1) * equiv c STUCK @ -x))) (Singleton_level S1 (transport (<x> rotId a @ -x) b))
+ transport (<x> Contractible (((c : S1) * equiv c STUCK @ -x))) (Singleton_level S1 (transport (<x> rotpath a @ -x) b))
  where
-  equiv (c : S1) : Unit -> Id U (IdP (rotId c) a b) (Id S1 (transport (<x> rotId a @ -x) b) c) = split
+  equiv (c : S1) : Unit -> Id U (IdP (rotpath c) a b) (Id S1 (transport (<x> rotpath a @ -x) b) c) = split
    tt ->
-    compU (IdP (rotId c) a b) 
-          (Id S1 (transport (rotId c) a) b)
-          (Id S1 (transport (<x> rotId a @ -x) b) c)
-          ?
+    compU (IdP (rotpath c) a b) 
+          (Id S1 (transport (rotpath c) a) b)
+          (Id S1 (transport (<x> rotpath a @ -x) b) c)
+          (<x> hom_to_het_1_path S1 S1 (rotpath c) a b @ -x)
           (compU (Id S1 (rot c a) b)
                  (Id S1 (rot a c) b)
-                 (Id S1 (transport (<x> rotId a @ -x) b) c)
+                 (Id S1 (transport (<x> rotpath a @ -x) b) c)
                  (<x> Id S1 (rot_comm c a @ x) b)
-                 (compU (Id S1 (transport (rotId a) c) b)
-                        (Id S1 c (transport (<x> rotId a @ -x) b))
-                        (Id S1 (transport (<x> rotId a @ -x) b) c)
-                        ?
-                        (inv_path S1 c (transport (<x> rotId a @ -x) b))))
+                 (compU (Id S1 (transport (rotpath a) c) b)
+                        (Id S1 c (transport (<x> rotpath a @ -x) b))
+                        (Id S1 (transport (<x> rotpath a @ -x) b) c)
+                        (move_transport_right_path S1 S1 (rotpath a) c b)
+                        (inv_path S1 c (transport (<x> rotpath a @ -x) b))))
 
 findRot (a : S1) (b : S1) : Rot a b = (Rot_level a b).1
 anyRot (a : S1) (b : S1) (r : Rot a b) : Unit -> Id (Rot a b) (findRot a b) r = split tt -> (Rot_level a b).2 r
@@ -308,8 +317,8 @@ Join_to_TH : Join S1 S1 -> TH = split
 TH_to_Join' : (x : S2) -> H x -> Join S1 S1 = split
   north -> \ (x : S1) -> joinl x
   south -> \ (x : S1) -> joinr x
-  merid c @ x -> (funext3_constant_range S1 S1 (rotId c) STUCK (Join S1 S1) (\ (x : S1) -> joinl x) (\ (x : S1) -> joinr x)
-                  (\ (a0 : S1) (a1 : S1) (p : IdP (rotId c) a0 a1) -> <x> join{Join S1 S1} a0 a1 @ x))@x
+  merid c @ x -> (funext3_constant_range S1 S1 (rotpath c) STUCK (Join S1 S1) (\ (x : S1) -> joinl x) (\ (x : S1) -> joinr x)
+                  (\ (a0 : S1) (a1 : S1) (p : IdP (rotpath c) a0 a1) -> <x> join{Join S1 S1} a0 a1 @ x))@x
 
 TH_to_Join (a : TH) : Join S1 S1 = TH_to_Join' a.1 a.2
 
@@ -317,8 +326,8 @@ Join_to_TH_c1 : (a : Join S1 S1) -> Id (Join S1 S1) (TH_to_Join (Join_to_TH a)) 
   joinl a -> <_> joinl a
   joinr a -> <_> joinr a
   join a b @ x -> <y> (funext3_constant_range_step
-                         S1 S1 (rotId ((findRot a b).1)) STUCK (Join S1 S1) (\ (x : S1) -> joinl x) (\ (x : S1) -> joinr x)
-                         (\ (a0 : S1) (a1 : S1) (p : IdP (rotId ((findRot a b).1)) a0 a1) -> <x> join{Join S1 S1} a0 a1 @ x)
+                         S1 S1 (rotpath ((findRot a b).1)) STUCK (Join S1 S1) (\ (x : S1) -> joinl x) (\ (x : S1) -> joinr x)
+                         (\ (a0 : S1) (a1 : S1) (p : IdP (rotpath ((findRot a b).1)) a0 a1) -> <x> join{Join S1 S1} a0 a1 @ x)
                          a b (findRot a b).2) @ y @ x 
 
 HP_to_TH_c2' : (a : S2) -> (h : H a) -> Id TH (Join_to_TH (TH_to_Join' a h)) (a , h) = split
@@ -326,7 +335,7 @@ HP_to_TH_c2' : (a : S2) -> (h : H a) -> Id TH (Join_to_TH (TH_to_Join' a h)) (a 
   south -> \ (h : S1) -> <_> (south , h)
   merid c @ x -> want @ x where
     -- use contractibility
-    want' (a0 a1 : S1) (p : IdP (rotId c) a0 a1) : Unit -> 
+    want' (a0 a1 : S1) (p : IdP (rotpath c) a0 a1) : Unit -> 
           IdP (<x> Id TH (merid{S2} (findRot a0 a1).1 @ x , (findRot a0 a1).2 @ x)
                          ((merid {Susp (S1)} c @ x,p @ x)))
               (<_> (north, a0))
@@ -334,16 +343,16 @@ HP_to_TH_c2' : (a : S2) -> (h : H a) -> Id TH (Join_to_TH (TH_to_Join' a h)) (a 
       tt -> <x> <y> (merid{S2} ((anyRot a0 a1 (c,p) STUCK @ y).1) @ x , ((anyRot a0 a1 (c,p) STUCK @ y).2) @ x)
 
     -- do a funext3 and then reduce the funext3 in the term
-    want : IdP (<x> (h : rotId c @ x) -> Id TH (Join_to_TH (TH_to_Join' (merid{S2} c @ x) h)) ((merid{S2} c @ x) , h))
+    want : IdP (<x> (h : rotpath c @ x) -> Id TH (Join_to_TH (TH_to_Join' (merid{S2} c @ x) h)) ((merid{S2} c @ x) , h))
                            (\ (h : S1) -> <_> (north , h))
                            (\ (h : S1) -> <_> (south , h)) = 
-           funext3 S1 S1 (rotId c) STUCK 
+           funext3 S1 S1 (rotpath c) STUCK 
                    (\ (h : S1) -> Id TH (Join_to_TH (TH_to_Join' north h)) (north , h))
                    (\ (h : S1) -> Id TH (Join_to_TH (TH_to_Join' south h)) (south , h))
-                   (<z> \ (h : rotId c @ z) -> Id TH (Join_to_TH (TH_to_Join' (merid{S2} c @ z) h)) ((merid{S2} c @ z) , h))
+                   (<z> \ (h : rotpath c @ z) -> Id TH (Join_to_TH (TH_to_Join' (merid{S2} c @ z) h)) ((merid{S2} c @ z) , h))
                    (\ (h : S1) -> <_> (north , h))
                    (\ (h : S1) -> <_> (south , h))
-                   (\ (a0 a1 : S1) (p : IdP (rotId c) a0 a1) -> 
+                   (\ (a0 a1 : S1) (p : IdP (rotpath c) a0 a1) -> 
                        whisker_square_top TH
                            (north, a0) (south , a1) (north, a0) (south , a1)
                            (<x> (merid{S2} (findRot a0 a1).1 @ x , (findRot a0 a1).2 @ x))
@@ -351,9 +360,9 @@ HP_to_TH_c2' : (a : S2) -> (h : H a) -> Id TH (Join_to_TH (TH_to_Join' a h)) (a 
                            (<_> (north, a0)) (<_> (south , a1))
                            (<x> <y> want' a0 a1 p STUCK @ x @ y)
                            (<x> Join_to_TH (TH_to_Join' (merid {Susp (S1)} c @ x) (p @ x)))
-                           (<x> <y> Join_to_TH ((funext3_constant_range_step S1 S1 (rotId c)
+                           (<x> <y> Join_to_TH ((funext3_constant_range_step S1 S1 (rotpath c)
                                                  STUCK (Join S1 S1) (\ (x : S1) -> joinl x) (\ (x : S1) -> joinr x)
-                                                 (\ (a0 : S1) (a1 : S1) (p : IdP (rotId c) a0 a1) -> <x> join{Join S1 S1} a0 a1 @ x)
+                                                 (\ (a0 : S1) (a1 : S1) (p : IdP (rotpath c) a0 a1) -> <x> join{Join S1 S1} a0 a1 @ x)
                                                  a0 a1 p)
                                                 @ -x @ y))
                           )
