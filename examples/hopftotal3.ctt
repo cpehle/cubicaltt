@@ -1,8 +1,8 @@
 -- THe total space of the Hopf fibration is S3
 -- Dan Licata
--- based on the proof by Guillaume Brunerie (see the HoTT Book)
+-- following the proof by Guillaume Brunerie (see the HoTT Book)
 
-module hopftotal2 where
+module hopftotal3 where
 
 import prelude
 import equiv
@@ -68,6 +68,31 @@ funext_het_l (A0 A1 : U) (A : Id U A0 A1) :
                        (f : (a0 : A0) -> IdP (<x> (B @ x) a0) (f0 a0) (f1 a0)) 
                        -> <x> \ (a : A0) -> f a @ x) 
                     A1 A
+
+funext3_constant_range (A0 A1 : U) (A : Id U A0 A1) : Unit -> 
+                       (B : U)
+                       (f0 : A0 -> B) (f1 : A1 -> B) 
+                       (f : (a0 : A0) (a1 : A1) (a : IdP A a0 a1) -> Id B (f0 a0) (f1 a1)) ->
+                       IdP (<x> (a : A @ x) -> B) f0 f1 = split 
+   tt -> ?
+
+funext3 (A0 A1 : U) (A : Id U A0 A1) : Unit -> 
+        (B0 : A0 -> U) (B1 : A1 -> U) (B : IdP (<x> A @ x -> U) B0 B1) 
+        (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A1) -> B1 a1) 
+        (f : (a0 : A0) (a1 : A1) (a : IdP A a0 a1) -> IdP (<x> (B @ x) (a @ x)) (f0 a0) (f1 a1)) ->
+        IdP (<x> (a : A @ x) -> B @ x a) f0 f1 = split 
+   tt -> ?
+
+funext3_constant_range_step
+                       (A0 A1 : U) (A : Id U A0 A1) : Unit -> 
+                       (B : U)
+                       (f0 : A0 -> B) (f1 : A1 -> B) 
+                       (f : (a0 : A0) (a1 : A1) (a : IdP A a0 a1) -> Id B (f0 a0) (f1 a1)) 
+                       (a0 : A0) (a1 : A1) (a : IdP A a0 a1) ->
+                       Id (Id B (f0 a0) (f1 a1))
+                          (<x> (funext3_constant_range A0 A1 A STUCK B f0 f1 f) @ x (a @ x))
+                          (f a0 a1 a) = split 
+   tt -> ?
 
 funext_het_l_constant_range (A0 A1 : U) (A : Id U A0 A1) : Unit -> 
                             (B : U)
@@ -225,6 +250,63 @@ H : S2 -> U = split
 TH : U = (c : S2) * H c
 
 -- ----------------------------------------------------------------------
+-- Pushout of S1 and S1 by rotation
+
+data HP = hpinl (a : S1)
+        | hpinr (b : S1)
+        | hpglue (a : S1) (b : S1) (c : S1) (p : IdP (rotId c) a b) <x> [(x=0) -> hpinl a, (x=1) -> hpinr b]
+
+-- flattening lemma
+
+HP_to_TH : HP -> TH = split
+  hpinl a -> (north , a)
+  hpinr b -> (south , b)
+  hpglue a b c p @ x -> (merid{S2} c @ x , p @ x) 
+
+TH_to_HP' : (x : S2) -> H x -> HP = split
+  north -> \ (x : S1) -> hpinl x
+  south -> \ (x : S1) -> hpinr x
+  merid c @ x -> (funext3_constant_range S1 S1 (rotId c) STUCK HP (\ (x : S1) -> hpinl x) (\ (x : S1) -> hpinr x)
+                  (\ (a0 : S1) (a1 : S1) (p : IdP (rotId c) a0 a1) -> <x> hpglue{HP} a0 a1 c p @ x))@x
+
+TH_to_HP (a : TH) : HP = TH_to_HP' a.1 a.2
+
+HP_to_TH_c1 : (a : HP) -> Id HP (TH_to_HP (HP_to_TH a)) a = split
+  hpinl a -> <_> hpinl a
+  hpinr a -> <_> hpinr a
+  hpglue a b c p @ x -> <y> (funext3_constant_range_step
+                                   S1 S1 (rotId c) STUCK HP (\ (x : S1) -> hpinl x) (\ (x : S1) -> hpinr x)
+                                   (\ (a0 : S1) (a1 : S1) (p : IdP (rotId c) a0 a1) -> <x> hpglue{HP} a0 a1 c p @ x)
+                                   a b p) @ y @ x
+
+
+HP_to_TH_c2' : (a : S2) -> (h : H a) -> Id TH (HP_to_TH (TH_to_HP' a h)) (a , h) = split
+  north -> \ (h : S1) -> <_> (north , h)
+  south -> \ (h : S1) -> <_> (south , h)
+  merid c @ x -> want @ x where
+    want : IdP (<x> (h : rotId c @ x) -> Id TH (HP_to_TH (TH_to_HP' (merid{S2} c @ x) h)) ((merid{S2} c @ x) , h))
+                           (\ (h : S1) -> <_> (north , h))
+                           (\ (h : S1) -> <_> (south , h)) = 
+           funext3 S1 S1 (rotId c) STUCK 
+                   (\ (h : S1) -> Id TH (HP_to_TH (TH_to_HP' north h)) (north , h))
+                   (\ (h : S1) -> Id TH (HP_to_TH (TH_to_HP' south h)) (south , h))
+                   (<z> \ (h : rotId c @ z) -> Id TH (HP_to_TH (TH_to_HP' (merid{S2} c @ z) h)) ((merid{S2} c @ z) , h))
+                   (\ (h : S1) -> <_> (north , h))
+                   (\ (h : S1) -> <_> (south , h))
+                   (\ (a0 a1 : S1) (p : IdP (rotId c) a0 a1) -> 
+                      whisker_square_top TH
+                          (north, a0) (south , a1) (north, a0) (south , a1)
+                          (<x> ((merid {Susp (S1)} c @ x,p @ x))) (<x> ((merid {Susp (S1)} c @ x,p @ x)))
+                          (<_> (north, a0)) (<_> (south , a1))
+                          (<x> (<_> ((merid {Susp (S1)} c @ x,p @ x))))
+                          (<x> HP_to_TH (TH_to_HP' (merid {Susp (S1)} c @ x) (p @ x)))
+                          (<x> <y> HP_to_TH ((funext3_constant_range_step S1 S1 (rotId c)
+                                               STUCK HP (\ (x : S1) -> hpinl x) (\ (x : S1) -> hpinr x)
+                                               (\ (a0 : S1) (a1 : S1) (p : IdP (rotId c) a0 a1) -> <x> hpglue{HP} a0 a1 c p @ x)
+                                               a0 a1 p) @ -x @ y))
+                          )
+
+-- ----------------------------------------------------------------------
 -- Join
 
 data Join (A : U) (B : U) = joinl (a : A)
@@ -232,85 +314,31 @@ data Join (A : U) (B : U) = joinl (a : A)
                           | join (a:A) (b : B) <i> [(i=0) -> joinl a, (i=1) -> joinr b]
 
 -- ----------------------------------------------------------------------
--- S1 join S1 and TH
+-- pushout and join
 
-merS2 (a : S1) : Id S2 north south = <y> merid{S2} a @ y
+HP_to_Join : HP -> Join S1 S1 = split
+  hpinl a -> joinl a
+  hpinr b -> joinr b
+  hpglue a b c p @ x -> join{Join S1 S1} a b @ x
 
-in_north (a : S1) : (c : S2) * H c = (north , a)
+Join_to_HP : Join S1 S1 -> HP = split
+  joinl a -> hpinl a 
+  joinr b -> hpinr b 
+  join a b @ x -> hpglue{HP} a b 
+                             (transport (<x> rotId a @ -x) b)
+                             ? 
+                             @ x
 
-in_south (a : S1) : (c : S2) * H c = (south , a)
+HP_to_Join_c2 : (j : Join S1 S1) -> Id (Join S1 S1) (HP_to_Join (Join_to_HP j)) j = split 
+  joinl a -> <_> joinl a
+  joinr b -> <_> joinr b
+  join a b @ x -> <_> join{Join S1 S1} a b @ x
 
-gluens_1 (a : S1) (b : S1) : Id S2 north south = 
-    merS2 (transport (<z> rotId a @ -z) b)
+HP_to_Join_c1 : (p : HP) -> Id HP (Join_to_HP (HP_to_Join p)) p = split 
+  hpinl a -> <_> hpinl a
+  hpinr b -> <_> hpinr b
+  hpglue a b c p @ x -> <y> hpglue{HP} a b ? ? @ x
 
-gluens_2 (a : S1) (b : S1) 
-         : Unit -> IdP (rotId (transport (<z> rotId a @ -z) b)) a b = split 
-  tt -> 
-    hom_to_het_left S1 STUCK S1 (rotId (transport (<z> rotId a @ -z) b)) a b 
-       (<x> comp S1 ((transport_inv S1 S1 (rotId a) b) @ x) [(x=0) -> (rot_comm a (transport (<x> rotId a @ -x) b))])
-
-gluens (a : S1) (b : S1) : Id TH (in_north a) (in_south b) = 
-    <x> (gluens_1 a b @ x , 
-         gluens_2 a b NONSTUCK @ x)
-
-Join_to_TH : Join S1 S1 -> TH = split
-  joinl a -> in_north a
-  joinr b -> in_south b
-  join a b @ x -> gluens a b @ x
-
-TH_to_Join' : (x : S2) -> H x -> Join S1 S1 = split
-   north -> \ (a : S1) -> joinl a
-   south -> \ (a : S1) -> joinr a
-   merid a @ x -> 
-    -- foo : Unit -> IdP (<x> rotId a @ x -> Join S1 S1) (\ (a : S1) -> joinl a) (\ (a : S1) -> joinr a)  = split
-    --     tt -> <x> \ (a : rotId a @ x) -> ?
-    (funext_het_l_constant_range S1 S1 (<x> (H (merid{S2} a @ x))) STUCK (Join S1 S1) 
-                     (\ (a : S1) -> joinl a) (\ (a : S1) -> joinr a)
-                     (\ (b : S1) -> <y> join{Join S1 S1} b (rot a b) @y))@x
-
-TH_to_Join (p : TH) : Join S1 S1 = TH_to_Join' p.1 p.2
-
-JTH1 : (a : Join S1 S1) -> Id (Join S1 S1) (TH_to_Join (Join_to_TH a)) a = split
-   joinl a -> <_> joinl a
-   joinr b -> <_> joinr b
-   join a b @ x -> ?
-
--- IdP (<!0> Join (S1, S1))
---     (funext_het_l_constant_range (S1, S1, <!0> glue (S1) [ (!0 = 0) -> (S1,(rot (((rotIsEquiv a b).2).1),(\ (y : S1) -> ((rotIsEquiv (((rotIsEquiv a b).2).1) y).2).1,(\ (y : S1) -> <!0> ((rotIsEquiv (((rotIsEquiv a b).2).1) y).2).2 @ -!0,\ (x : S1) -> <!0> ((rotIsEquiv (((rotIsEquiv a b).2).1) (rot (((rotIsEquiv a b).2).1) x)).1 ((((rotIsEquiv (((rotIsEquiv a b).2).1) (rot (((rotIsEquiv a b).2).1) x)).2).1,((rotIsEquiv (((rotIsEquiv a b).2).1) (rot (((rotIsEquiv a b).2).1) x)).2).2)) ((x,<!0> rot (((rotIsEquiv a b).2).1) x)) @ !0).1)))) ]) 
---                                  (?)
---                                  (Join (S1, S1))
---                                  (\ (a0 : S1) -> joinl a0) 
---                                  (\ (a0 : S1) -> joinr a0) 
---                                  (\ (b0 : S1) -> <!0> join {Join (S1, S1)} b0 (rot (((rotIsEquiv a b).2).1) b0) @ !0) @ x 
---                                  (gluens_2 (a, b) (?) @ x)) 
---    (join {Join (S1, S1)} a b @ x)
-
--- JTH2' : (a : S2) -> (h : H a) -> Id TH (Join_to_TH (TH_to_Join' a h)) (a,h) = split
---   north -> \ (a : S1) -> <_> (north, a)
---   south -> \ (b : S1) -> <_> (south, b)
---   merid a @ x -> mcase a @ x where
---     mcase (a : S1) : IdP (<x> (h : H (merS2 a @ x)) -> Id TH (Join_to_TH (TH_to_Join' (merS2 a @ x) h)) ((merS2 a @ x),h)) 
---                          (\ (a : S1) -> <_> (north, a))
---                          (\ (b : S1) -> <_> (south, b)) = 
---         funext_het_l S1 S1 (<x> (H (merS2 a @ x)))
---                      (\ (h : S1) -> Id TH (Join_to_TH (TH_to_Join' north h)) (north,h))
---                      (\ (h : S1) -> Id TH (Join_to_TH (TH_to_Join' south h)) (south,h))
---                      (<x> \ (h : H (merS2 a @ x)) -> Id TH (Join_to_TH (TH_to_Join' (merS2 a @ x) h)) ((merS2 a @ x),h)) 
---                      (\ (a : S1) -> <_> (north, a))
---                      (\ (b : S1) -> <_> (south, b))
---                      ?
-
--- (a00 : S1) -> IdP (<!0> IdP (<!1> Sigma (Susp (S1)) (\ (c : Susp (S1)) -> H c))
---  (Join_to_TH (funext_het_l_constant_range (S1, S1, <!1> glue (S1) [ (!1 = 0) -> (S1,(rot a0,(\ (y : S1) -> ((rotIsEquiv a0 y).2).1,(\ (y : S1) -> <!0> ((rotIsEquiv a0 y).2).2 @ -!0,\ (x : S1) -> <!0> ((rotIsEquiv a0 (rot a0 x)).1 ((((rotIsEquiv a0 (rot a0 x)).2).1,((rotIsEquiv a0 (rot a0 x)).2).2)) ((x,<!0> rot a0 x)) @ !0).1)))) ])
---                                           (?)
---                                           (Join (S1, S1))
---                                           (\ (a1 : S1) -> joinl a1)
---                                           (\ (a1 : S1) -> joinr a1) 
---                                           (\ (b : S1) -> <!0> join {Join (S1, S1)} b (rot a0 b) @ !0) @ !0 
---                                                               (glueElem (rot a0 a00) [ (!0 = 0) -> a00 ])))
---                                            ((merid {Susp (S1)} a0 @ !0,glueElem (rot a0 a00) [ (!0 = 0) -> a00 ]))) 
---  (<!0> (north,a00)) 
---  (<!0> (south,rot a0 a00))
 
 -- ----------------------------------------------------------------------
 -- assoc of join
