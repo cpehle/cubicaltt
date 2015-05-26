@@ -2,6 +2,14 @@
 -- Dan Licata
 -- following the proof by Guillaume Brunerie (see the HoTT Book)
 
+-- 200 lines library
+-- 85  lines circle stuff, definition of H
+-- 70  total space of H and Join S1 S1
+-- 180 associativity of join
+-- 57  fat vs thin suspension
+-- 43  2 point vs 1 point circle
+-- 15  put it all together
+
 module hopftotal4 where
 
 import prelude
@@ -241,9 +249,16 @@ rot : S1 -> S1 -> S1 = split
   base -> (\ (y : S1) -> y)
   loop @ i -> (\ (y : S1) -> rotLoop y @ i)
 
+rot_unit_r : (a : S1) -> Id S1 (rot a base) a = split
+   base -> <_> base
+   loop@x -> <_> loop{S1}@x
+
 loopS1_3 : Id S1 base base = compS1 loopS1_2 loopS1
 test23 : IdP (<s> Id S1 (loopS1_3 @ s) (loopS1_3 @ s)) loopS1_2 loopS1_2 = <x> <y> rot (loopS1_3 @ x) (loopS1_2 @ y)
 test23_diag : Id S1 base base = <x> test23 @ x @ x
+
+-- at this point we have an hspace, so we could use the general proof that rot x and (\ x -> rot x y) 
+-- are equivalences.  however, it's simpler to inline the connectedness argument for this case
 
 rotIsEquiv_loop : IdP (<x> isEquiv S1 S1 (rot (loopS1 @ x))) (idIsEquiv S1) (idIsEquiv S1) = 
   <x> useIsEquivPropHeterogeneously S1 S1 (\ (x : S1) -> x) (\ (x : S1) -> x) (<x> rot (loop{S1} @ x)) (idIsEquiv S1) (idIsEquiv S1) @ x 
@@ -254,9 +269,45 @@ rotIsEquiv : (a : S1) -> isEquiv S1 S1 (rot a) = split
 
 rotpath (x : S1) : Id U S1 S1 = isEquivEq S1 S1 (rot x) (rotIsEquiv x)
 
-rot_unit_r : (a : S1) -> Id S1 (rot a base) a = split
-   base -> <_> base
-   loop@x -> <_> loop{S1}@x
+-- too slow if we allow this to reduce always
+rotright_IsEquiv_base : Unit -> isEquiv S1 S1 (\ (a : S1) -> rot a base) = split 
+  tt -> transport (<x> isEquiv S1 S1 (\ (a : S1) -> rot_unit_r a @ -x)) (idIsEquiv S1)
+
+rotright_IsEquiv : (b : S1) -> isEquiv S1 S1 (\ (a : S1) -> rot a b) = split 
+  base -> rotright_IsEquiv_base STUCK
+  loop@x -> useIsEquivPropHeterogeneously S1 S1 
+                                          (\ (a : S1) -> rot a base)
+                                          (\ (a : S1) -> rot a base)
+                                          (<x> \ (a : S1) -> rot a (loop{S1} @ x))
+                                          (rotright_IsEquiv_base STUCK)
+                                          (rotright_IsEquiv_base STUCK) @ x 
+
+rotpath_right (b : S1) : Id U S1 S1 = 
+  isEquivEq S1 S1 (\ (x : S1) -> rot x b) (rotright_IsEquiv b)
+
+-- evidence that a rotated by something is b
+Rot (a : S1) (b : S1) : U = (c : S1) * IdP (rotpath c) a b
+
+-- only uses the hspace axioms, so would work for the general hopf construction
+Rot_level (a : S1) (b : S1) : Contractible (Rot a b) =
+ transport (<x> Contractible (((c : S1) * equiv c STUCK @ -x))) (Singleton_level S1 (transport (<x> rotpath_right a @ -x) b))
+ where
+  equiv (c : S1) : Unit -> Id U (IdP (rotpath c) a b) (Id S1 (transport (<x> rotpath_right a @ -x) b) c) = split
+   tt ->
+    compU (IdP (rotpath c) a b)
+          (Id S1 (transport (rotpath c) a) b)
+          (Id S1 (transport (<x> rotpath_right a @ -x) b) c)
+          (<x> hom_to_het_1_path S1 S1 (rotpath c) a b @ -x)
+          (compU (Id S1 (rot c a) b) 
+                 (Id S1 c (transport (<x> rotpath_right a @ -x) b))
+                 (Id S1 (transport (<x> rotpath_right a @ -x) b) c)
+                 (move_transport_right_path S1 S1 (rotpath_right a) c b) 
+                 (inv_path S1 c (transport (<x> rotpath_right a @ -x) b)))
+
+findRot (a : S1) (b : S1) : Rot a b = (Rot_level a b).1
+anyRot (a : S1) (b : S1) (r : Rot a b) : Id (Rot a b) (findRot a b) r = (Rot_level a b).2 r
+
+-- rot is commutative, but we don't use this fact below
 
 rot_comm_square : (a : S1) -> IdP (<x> Id S1 (rot a (loop{S1}@x)) (rotLoop a @ x))
                                   (rot_unit_r a)
@@ -267,25 +318,6 @@ rot_comm_square : (a : S1) -> IdP (<x> Id S1 (rot a (loop{S1}@x)) (rotLoop a @ x
 rot_comm (a : S1) : (b : S1) -> Id S1 (rot a b) (rot b a) = split
    base -> rot_unit_r a
    loop @ x -> rot_comm_square a @ x
-
--- evidence that a rotated by something is b
-Rot (a : S1) (b : S1) : U = (c : S1) * IdP (rotpath c) a b
-
-Rot_level (a : S1) (b : S1) : Contractible (Rot a b) =
- transport (<x> Contractible (((c : S1) * equiv c STUCK @ -x))) (Singleton_level S1 (transport (<x> rotpath a @ -x) b))
- where
-  equiv (c : S1) : Unit -> Id U (IdP (rotpath c) a b) (Id S1 (transport (<x> rotpath a @ -x) b) c) = split
-   tt ->
-    compU (IdP (rotpath c) a b) (Id S1 (transport (rotpath c) a) b) (Id S1 (transport (<x> rotpath a @ -x) b) c)
-          (<x> hom_to_het_1_path S1 S1 (rotpath c) a b @ -x)
-          (compU (Id S1 (rot c a) b) (Id S1 (rot a c) b) (Id S1 (transport (<x> rotpath a @ -x) b) c)
-                 (<x> Id S1 (rot_comm c a @ x) b)
-                 (compU (Id S1 (transport (rotpath a) c) b) (Id S1 c (transport (<x> rotpath a @ -x) b)) (Id S1 (transport (<x> rotpath a @ -x) b) c)
-                        (move_transport_right_path S1 S1 (rotpath a) c b)
-                        (inv_path S1 c (transport (<x> rotpath a @ -x) b))))
-
-findRot (a : S1) (b : S1) : Rot a b = (Rot_level a b).1
-anyRot (a : S1) (b : S1) (r : Rot a b) : Id (Rot a b) (findRot a b) r = (Rot_level a b).2 r
 
 -- ----------------------------------------------------------------------
 -- suspensions 
@@ -715,17 +747,16 @@ test3 : IdP (<x> IdP (<y> TH) (t (merid{S3} north @ x)) (t (merid{S3} south @ x)
                (<y> t north) 
                (<y> t south) = (<x> <y> t (merid{S3} (merid{S2} base @ y) @ x))
 
--- not sure if this finishes
-test4 : IdP(<z> IdP (<x> IdP (<y> TH)
-                            (t (merid{S3} north @ x))
-                            (t (merid{S3} south @ x)))
-              (<y> t north) 
-              (<y> t south) ) 
-           (<x> <y> t (merid{S3} (merid{S2} base @ y) @ x))
-           (<x> <y> t (merid{S3} (merid{S2} base @ y) @ x)) = 
-        <z> <x> <y> t (path3 @ z @ x @ y)
-
-{-
+-- takes 10 minutes? just to load
+-- not sure if it evaluates
+-- test4 : IdP(<z> IdP (<x> IdP (<y> TH)
+--                             (t (merid{S3} north @ x))
+--                             (t (merid{S3} south @ x)))
+--               (<y> t north) 
+--               (<y> t south) ) 
+--            (<x> <y> t (merid{S3} (merid{S2} base @ y) @ x))
+--            (<x> <y> t (merid{S3} (merid{S2} base @ y) @ x)) = 
+--         <z> <x> <y> t (path3 @ z @ x @ y)
 
 -- ----------------------------------------------------------------------
 -- pointed types
@@ -739,13 +770,13 @@ PointedMap (A : PointedType) (B : PointedType) : U =
 
 OmegaF (A B : PointedType) (f : PointedMap A B) : PointedMap (Omega A) (Omega B) = 
        ((\ (p : (Omega A).1) -> <x> (comp B.1 (f.1 (p @ x)) [(x=1) -> f.2, (x=0) -> f.2])) ,
-        comp_inv_r2 B.1 (f.1 A.2) STUCK B.2 f.2)
+        comp_inv_r2 B.1 (f.1 A.2) B.2 f.2)
 
 SuspP (A : PointedType) : PointedType = (Susp A.1, north)
 
 meridP (A : PointedType) : PointedMap A (Omega(SuspP A)) = 
   ((\ (a : A.1) -> <x> comp (Susp A.1) (merid{Susp A.1} a @ x) [(x = 1) -> <x> merid{Susp A.1} A.2 @ -x]),
-   comp_inv_r (Susp A.1) north STUCK south (<x> merid{Susp A.1} A.2 @ x))
+   comp_inv_r (Susp A.1) north south (<x> merid{Susp A.1} A.2 @ x))
 
 S1P : PointedType = (S1, base)
 
@@ -776,7 +807,7 @@ loopS3 : Id (Id (Id S3 north north) (<_> north) (<_> north)) (<_> <_> north) (<_
 THP : PointedType = (TH , (north, base))
 
 S3_to_TH_P_constant : PointedMap S3P THP = (\ (x : S3) -> (north,base), <_> (north, base)) 
-S3_to_TH_P : PointedMap S3P THP = (S3_to_TH, <_> (north, base))
+S3_to_TH_P : PointedMap S3P THP = (\ (x : S3) -> transport S3_is_TH x, <_> (north, base))
 
 Omega3S3_to_Omega3TH : PointedMap (Omega (Omega (Omega S3P))) (Omega (Omega (Omega THP))) =
          OmegaF (Omega (Omega S3P)) (Omega (Omega THP))
@@ -785,4 +816,3 @@ Omega3S3_to_Omega3TH : PointedMap (Omega (Omega (Omega S3P))) (Omega (Omega (Ome
 test : (Omega (Omega (Omega THP))).1 = Omega3S3_to_Omega3TH.1 loopS3
 
      
--}
