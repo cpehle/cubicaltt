@@ -1,0 +1,202 @@
+
+module suspensionproduct2 where
+
+import prelude
+import equiv
+
+STUCK : Unit = ?
+NOTSTUCK : Unit = tt
+
+-- ----------------------------------------------------------------------
+-- library
+
+eliminate_composite_top_right (A : U) (t0 t1 b0 b1 : A) 
+        (top : Id A t0 b1) 
+        (bot : Id A b0 b1)
+        (left : Id A t0 b0)
+        (right : Id A t1 b1) 
+        (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > b1)) : 
+        IdP (<x> Id A ((compId A t0 b1 t1 top (<z> right @ -z)) @ x) (bot @ x)) left right = 
+      J A t1 ( \ (b1 : A) (right : Id A t1 b1) -> 
+                 (top : Id A t0 b1) 
+                 (bot : Id A b0 b1)
+                 (left : Id A t0 b0)
+                 (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > b1)) 
+                 -> IdP (<x> Id A ((compId A t0 b1 t1 top (<z> right @ -z)) @ x) (bot @ x)) left right 
+                 ) 
+             ( \ (top : Id A t0 t1) 
+                 (bot : Id A b0 t1)
+                 (left : Id A t0 b0)
+                 (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > t1)) 
+                 -> sq
+                 ) b1 right top bot left sq
+
+comp_inv_r (A : U) (a0 : A) : (a1 : A) (p : Id A a0 a1)
+          -> Id (Id A a0 a0) (<y> comp A (p @ y) [ (y = 1) -> <y> p @ -y ])
+                             (<_> a0) = 
+   J A a0 (\ (a1 : A) (p : Id A a0 a1) ->
+             Id (Id A a0 a0) (<y> comp A (p @ y) [ (y = 1) -> <y> p @ -y ]) (<_> a0))
+          (<_> <_> a0)
+
+comp_inv_r2 (A : U) (a0 : A) : (a1 : A) (p : Id A a0 a1)
+          -> Id (Id A a1 a1) (<y> comp A a0 [ (y = 0) -> p, (y = 1) -> <y> p @ y ])
+                             (<_> a1) = 
+   J A a0 (\ (a1 : A) (p : Id A a0 a1) ->
+             Id (Id A a1 a1) (<y> comp A a0 [ (y = 0) -> p, (y = 1) -> <y> p @ y ]) (<_> a1))
+          (<_> <_> a0)
+
+
+-- ----------------------------------------------------------------------
+-- pointed types
+
+PointedType : U = (A : U) * A
+
+Omega (A : PointedType) : PointedType = (Id A.1 A.2 A.2 , <_> A.2)
+
+PointedMap (A : PointedType) (B : PointedType) : U = 
+   (f : A.1 -> B.1) * (Id (B.1) (f A.2) B.2)
+
+OmegaF (A B : PointedType) (f : PointedMap A B) : PointedMap (Omega A) (Omega B) = 
+       ((\ (p : (Omega A).1) -> <x> (comp B.1 (f.1 (p @ x)) [(x=1) -> f.2, (x=0) -> f.2])) ,
+        comp_inv_r2 B.1 (f.1 A.2) B.2 f.2)
+
+TimesP (A : PointedType) (B : PointedType) : PointedType = ((_ : A.1) * B.1, (A.2 , B.2))
+
+-- ----------------------------------------------------------------------
+-- suspension and reduced suspension
+
+data Susp (A : U) = north
+                  | south
+                  | merid (a:A) <i> [(i=0) -> north, (i=1) -> south]
+
+data RSusp (A : PointedType) = north
+                             | merid (a:A.1) <i> [(i=0) -> north, (i=1) -> north]
+                             | meridpt <x y> [(x=0) -> merid{RSusp A} A.2 @ y, (x=1) -> north]
+
+RSuspP (A : PointedType) : PointedType = (RSusp A, north)
+
+Susp_to_RSusp (A : PointedType) : Susp A.1 -> RSusp A = split
+  north -> north
+  south -> north
+  merid a @ x -> merid{RSusp A} a @ x
+
+RSusp_to_Susp (A : PointedType) : RSusp A -> Susp A.1 = split
+  north -> north
+  merid a @ x -> comp (Susp A.1)  (merid{Susp A.1} a @ x) [(x=1) -> <x> merid{Susp A.1} A.2 @ -x]
+  meridpt @ x y -> comp_inv_r (Susp A.1) north south (<x> merid{Susp A.1} A.2 @ x) @ x @ y
+
+Susp_RSusp_c1 (A : PointedType) : (a : Susp A.1) -> Id (Susp A.1) (RSusp_to_Susp A (Susp_to_RSusp A a)) a = split
+  north -> <_> north
+  south -> <x> merid{Susp A.1} A.2 @ x
+  merid a @ x -> <y> eliminate_composite_top_right (Susp A.1) north north north south
+                                               (<x> merid {Susp (A.1)} a @ x)
+                                               (<x> merid {Susp (A.1)} a @ x)
+                                               (<_> north)
+                                               (<x> merid {Susp (A.1)} A.2 @ x)
+                                               (<x><y> merid {Susp (A.1)} a @ x)  @ x @ y
+
+-- seems doable
+-- Susp_RSusp_c2 (A : PointedType) : (a : RSusp A) -> Id (RSusp A) (Susp_to_RSusp A (RSusp_to_Susp A a)) a = split
+--   north -> <_> north -- <x> merid{RSusp A} A.2 @ x
+--   merid a @ x -> ?
+--   meridpt @ x y -> ?
+
+-- ----------------------------------------------------------------------
+-- join
+
+data Join (A : U) (B : U) = joinl (a : A)
+                          | joinr (b : B)
+                          | join (a:A) (b : B) <i> [(i=0) -> joinl a, (i=1) -> joinr b]
+                                                
+-- ----------------------------------------------------------------------
+-- smash
+
+data Smash (A : PointedType) (B : PointedType) = 
+     spair (a : A.1) (b : B.1)
+   | smash (a : A.1) (b : B.1) <x> [(x=0) -> spair a B.2,
+                                    (x=1) -> spair A.2 b]
+
+SmashP (A : PointedType) (B : PointedType) : PointedType = (Smash A B, spair A.2 B.2)
+
+Smash_to_LoopJoin_pt (A : PointedType) (B : PointedType) (a : A.1) (b : B.1) : Id (Join A.1 B.1) (joinr B.2) (joinl A.2) = 
+ <x> comp (Join A.1 B.1) (join{Join A.1 B.1} a b @ x)
+                         [ (x=0) -> <y> join{Join A.1 B.1} a B.2 @ y,
+                           (x=1) -> <y> join{Join A.1 B.1} A.2 b @ -y]
+
+Smash_to_LoopJoin (A : PointedType) (B : PointedType) : Smash A B -> Id (Join A.1 B.1) (joinr B.2) (joinl A.2) = split
+   spair a b -> Smash_to_LoopJoin_pt A B a b
+   smash a b @ x -> <y> sq STUCK @ x @ y  where
+         sq : Unit -> Id (Id (Join A.1 B.1) (joinr B.2) (joinl A.2))
+                         (Smash_to_LoopJoin_pt A B a B.2)
+                         (Smash_to_LoopJoin_pt A B A.2 b) = split
+             tt -> ?
+
+SuspSmash_to_Join (A : PointedType) (B : PointedType) : Susp (Smash A B) -> Join A.1 B.1 = split
+   north -> joinr B.2
+   south -> joinl A.2
+   merid sm @ x -> Smash_to_LoopJoin A B sm @ x
+
+Join_to_SuspSmash (A : PointedType) (B : PointedType) : Join A.1 B.1 -> Susp (Smash A B) = split
+   joinl _ -> north
+   joinr _ -> south
+   join a b @ x -> merid{Susp (Smash A B)} (spair a b) @ x
+
+-- ----------------------------------------------------------------------
+-- wedge 
+
+data Wedge (A : PointedType) (B : PointedType) = 
+     winl (a : A.1)
+   | winr (b : B.1)
+   | wglue <x> [(x=0) -> winl A.2,
+                (x=1) -> winr B.2]
+
+WedgeP (A : PointedType) (B : PointedType) : PointedType = (Wedge A B, winl A.2)
+
+-- ----------------------------------------------------------------------
+-- Σ(X×Y) ≃ ΣX ∨ ΣY ∨ Σ(X∧Y)
+
+{-
+
+RHS (A : PointedType) (B : PointedType) : PointedType = WedgeP (WedgeP (RSuspP A) (RSuspP B)) (RSuspP(SmashP A B))
+
+to (A : PointedType) (B : PointedType) : RSusp (TimesP A B) -> (RHS A B).1 = split 
+  north -> winl (winl north)
+  merid ab @ x -> comp ((RHS A B).1) (winr (merid{RSusp (SmashP A B)} (spair ab.1 ab.2) @ x)) [(x=0) -> <x> wglue{(RHS A B).1} @ -x, (x=1) -> <x> wglue{(RHS A B).1} @ -x]
+  meridpt @ x y -> ?
+
+-- [ (x = 0) -> comp (Wedge ((Wedge ((RSusp (A),north), (RSusp (B),north)),winl north), (RSusp ((Smash (A, B),spair (A.2) (B.2))),north))) (winr (merid {RSusp ((Smash (A, B),spair (A.2) (B.2)))} (spair (A.2) (B.2)) @ y)) [ (y = 0) -> <!0> wglue {Wedge ((Wedge ((RSusp (A),north), (RSusp (B),north)),winl north), (RSusp ((Smash (A, B),spair (A.2) (B.2))),north))} @ -!0, (y = 1) -> <!0> wglue {Wedge ((Wedge ((RSusp (A),north), (RSusp (B),north)),winl north), (RSusp ((Smash (A, B),spair (A.2) (B.2))),north))} @ -!0 ], (x = 1) -> winl (winl north) ]
+
+fromll (A : PointedType) (B : PointedType) : (RSuspP A).1 -> (RSuspP (TimesP A B)).1 = split
+  north -> north
+  merid a @ x -> merid {(RSuspP (TimesP A B)).1} (a , B.2) @ x
+  meridpt @ x y -> meridpt {(RSuspP (TimesP A B)).1} @ x @ y
+
+fromlr (A : PointedType) (B : PointedType) : (RSuspP B).1 -> (RSuspP (TimesP A B)).1 = split
+  north -> north
+  merid b @ x -> merid {(RSuspP (TimesP A B)).1} (A.2 , b) @ x
+  meridpt @ x y -> meridpt {(RSuspP (TimesP A B)).1} @ x @ y
+
+froml (A : PointedType) (B : PointedType) : (WedgeP (RSuspP A) (RSuspP B)).1 -> (RSuspP (TimesP A B)).1 = split
+  winl a -> fromll A B a
+  winr b -> fromlr A B b
+  wglue @ x -> north -- or something else?
+
+fromrm (A : PointedType) (B : PointedType) : (SmashP A B).1 -> Id ((RSuspP (TimesP A B)).1) north north = split
+  spair a b -> <x> comp ((RSuspP ((TimesP A B))).1) (merid{((RSuspP (TimesP A B)).1)} (A.2,b) @ x) [(x=1) -> <x> (merid{((RSuspP (TimesP A B)).1)} (a,B.2) @ x)]
+  smash a b @ x -> ? where 
+    -- sq : Unit -> Id (Id ((RSuspP (TimesP A B)).1) north north)
+    --                 (<x> merid{((RSuspP (TimesP A B)).1)} (a,B.2) @ x)
+    --                 (<x> merid{((RSuspP (TimesP A B)).1)} (A.2,b) @ x) = split 
+    --    tt -> ?
+
+fromr (A : PointedType) (B : PointedType) : (RSuspP (SmashP A B)).1 -> (RSuspP (TimesP A B)).1 = split
+  north -> north
+  merid ab @ x -> fromrm A B ab @ x
+  meridpt @ x y -> ?
+
+-- from (A : PointedType) (B : PointedType) : (RHS A B).1 -> (SuspP (TimesP A B)).1 = split
+--   winl a -> froml A B a
+--   winr b -> fromr A B b
+--   wglue @ x -> north
+
+-}
