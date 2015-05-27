@@ -45,6 +45,18 @@ comp_inv_r2 (A : U) (a0 : A) : (a1 : A) (p : Id A a0 a1)
              Id (Id A a1 a1) (<y> comp A a0 [ (y = 0) -> p, (y = 1) -> <y> p @ y ]) (<_> a1))
           (<_> <_> a0)
 
+fill_square_top (A : U) (a0 a1 : A) (b0 b1 : A)
+                (bot : Id A b0 b1)
+                (left : Id A a0 b0)
+                (right : Id A a1 b1) :
+                (IdP (<x> Id A 
+                             (comp A (bot @ x) [(x=0) -> <y> left @ -y,
+                                                (x=1) -> <y> right @ -y])
+                             (bot @ x)) 
+                      left
+                      right) = 
+   <x> <y> (comp A (bot @ x) [(x=0) -> <z> left @  (y\/-z),
+                              (x=1) -> <z> right @ (y\/-z)])
 
 -- ----------------------------------------------------------------------
 -- pointed types
@@ -140,6 +152,44 @@ Join_to_SuspSmash (A : PointedType) (B : PointedType) : Join A.1 B.1 -> Susp (Sm
    joinl _ -> north
    joinr _ -> south
    join a b @ x -> merid{Susp (Smash A B)} (spair a b) @ x
+
+Join_to_SuspSmash_c1 (A : PointedType) (B : PointedType) : (j : Join A.1 B.1) -> Id (Join A.1 B.1) (SuspSmash_to_Join A B (Join_to_SuspSmash A B j)) j = split
+  joinl a -> <x> join{Join A.1 B.1} a B.2 @ -x
+  joinr b -> <x> join{Join A.1 B.1} A.2 b @ x
+  join a b @ x -> <y> want @ x @ y where
+     want : IdP (<x> Id (Join A.1 B.1) 
+                        (Smash_to_LoopJoin_pt A B a b @ x)
+                        (join{Join A.1 B.1} a b @ x))
+                (<y> join{Join A.1 B.1} a B.2 @ -y)
+                (<y> join{Join A.1 B.1} A.2 b @ y) = 
+        -- top is a composite, this is the filler
+        <x> <y> comp (Join A.1 B.1) (join{Join A.1 B.1} a b @ x)
+                     [ (x=0) -> <z> join{Join A.1 B.1} a B.2 @ -(y \/ -z),
+                       (x=1) -> <z> join{Join A.1 B.1} A.2 b @ (y \/ -z)] 
+
+Join_to_SuspSmash_c2_m (A : PointedType) (B : PointedType) : (s : Smash A B) -> 
+  IdP (<x> Id (Susp (Smash A B)) 
+           (Join_to_SuspSmash A B (Smash_to_LoopJoin A B s @ x))
+           (merid{Susp (Smash A B)} s @ x))
+      (<x> merid {Susp(Smash A B)} (spair A.2 B.2) @ -x)
+      (<x> merid {Susp(Smash A B)} (spair A.2 B.2) @ x) = split 
+  spair a b -> ?
+
+-- IdP (<!0> IdP (<!1> Susp (Smash (A, B)))
+     --        (comp (Susp (Smash (A, B)))
+     --              (merid {Susp (Smash (A, B))} (spair a b) @ !0)
+     --               [ (!0 = 0) -> <!1> merid {Susp (Smash (A, B))} (spair a (B.2)) @ !1, 
+     --                 (!0 = 1) -> <!1> merid {Susp (Smash (A, B))} (spair (A.2) b) @ -!1 ])
+     --        (merid {Susp (Smash (A, B))} (spair a b) @ !0))
+     -- (<!0> merid {Susp (Smash (A, B))} (spair (A.2) (B.2)) @ -!0)
+     -- (<!0> merid {Susp (Smash (A, B))} (spair (A.2) (B.2)) @ !0)
+
+  smash a b @ x -> ?  
+
+Join_to_SuspSmash_c2 (A : PointedType) (B : PointedType) : (s : Susp (Smash A B)) -> Id (Susp (Smash A B)) (Join_to_SuspSmash A B (SuspSmash_to_Join A B s)) s = split
+  north -> <x> merid {Susp(Smash A B)} (spair A.2 B.2) @ -x
+  south -> <x> merid {Susp(Smash A B)} (spair A.2 B.2) @ x
+  merid sm @ x -> ?
 
 -- ----------------------------------------------------------------------
 -- wedge 
