@@ -3,7 +3,7 @@ module spheres where
 import prelude
 import pointedtypes
 import s1
-import suspension
+import susp
 
 S2 : U = Susp S1
 S3 : U = Susp S2

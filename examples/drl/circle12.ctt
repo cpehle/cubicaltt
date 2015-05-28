@@ -3,7 +3,7 @@ module circle12 where
 import prelude
 import s1
 import spheres
-import suspension
+import susp
 
 S1_1_to_2 : S1 -> Susp Bool = split
   base -> north

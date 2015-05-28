@@ -6,6 +6,7 @@ import spheres
 import join
 import circle12
 import suspjoinbool
+import joinassoc
 
 -- definition
 
