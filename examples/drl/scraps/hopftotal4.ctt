@@ -225,6 +225,8 @@ inv_path (A : U) (a b : A) : Id U (Id A a b) (Id A b a) =
 
 data Bool = true | false
 
+data Bool = true | false
+
 -- ----------------------------------------------------------------------
 -- circle
 

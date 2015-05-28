@@ -1,0 +1,11 @@
+module wedge where
+
+import pointedtypes
+
+data Wedge (A : PointedType) (B : PointedType) = 
+     winl (a : A.1)
+   | winr (b : B.1)
+   | wglue <x> [(x=0) -> winl A.2,
+                (x=1) -> winr B.2]
+
+WedgeP (A : PointedType) (B : PointedType) : PointedType = (Wedge A B, winl A.2)

@@ -1,0 +1,53 @@
+
+module mystery where
+
+import prelude
+import torus
+import circle
+import helix
+
+-- (1) (Z * Z) * (Z * Z)
+-- (2) loopS1 * loopS1
+-- (3) loopT * loopT
+-- (4) square T
+-- (5) symmetry
+-- (6) diagonal
+-- (7) convert back to Z
+
+basebase : (_ : S1) * S1 = (base , base)
+
+loopT : U = IdP (<_>Torus) ptT ptT
+
+loopS1_Z : IdP (<_>U) loopS1 Z = 
+  isoId loopS1 Z (encode base) (decode base) ? ?
+
+step1 (input : and Z Z) : and S1 S1 = 
+  transport (<i> (_ : loopS1_Z @ -i) * loopS1_Z @ -i) input
+
+basebasept : IdP (<i> (S1S1equalsTorus @ i)) (base, base) ptT = 
+  <x> glueElem ptT [(x=0) -> basebase]
+
+c2tloops (p : (and loopS1 loopS1)) : loopT =
+  <x> c2t (p.1 @ x, p.2@x)
+
+step2 (p : and loopS1 loopS1) : and loopT loopT =
+  transport (<i> (\ (X : U) -> and X X) ) p 
+
+-- switch : Torus -> Torus = split
+--   ptT -> ptT
+--   pathOneT @ y -> pathTwoT{Torus} @ y
+--   pathTwoT @ x -> pathOneT{Torus} @ x
+--   squareT @ x y -> squareT{Torus} @ y @ x
+
+
+pair_groupoid (A : U) (B : U) (Alevel : groupoid A) (Blevel : groupoid B) : groupoid (and A B) =
+  ?
+
+Torus_groupoid : groupoid Torus = 
+  transport (<x> groupoid (S1S1equalsTorus @ x)) (pair_groupoid S1 S1 isGroupoidS1 isGroupoidS1)
+
+groupoid_disc (A : U) (Alevel : groupoid A)
+              (a0 a1 : A)
+              (p : Id A a0 a1) 
+              (q : Id A a0 a1) : (Id (Id A a0 a1) p q) = 
+              Alevel a0 a1 p q

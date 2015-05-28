@@ -1,0 +1,12 @@
+
+module theorems where
+
+import hopffib
+import suspjoinbool
+import circle12
+import joinassoc
+import toruss1s1
+
+-- work in progress
+import rsuspsusp
+import suspsmashjoin

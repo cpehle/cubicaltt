@@ -1,0 +1,62 @@
+module suspjoinbool where
+
+import prelude
+import suspension
+import join
+
+-- ----------------------------------------------------------------------
+-- suspension and join with booleans
+
+-- join Bool A is a "fat" suspension, with an inm construct including A, and paths from N to inm(x) to S
+-- inl true = N
+-- inl false = S
+-- inr x = inm x
+
+fatten (A : U) : Susp A -> Join Bool A = split
+   north -> joinl true
+   south -> joinl false
+   merid a @ x -> comp (Join Bool A) (join{Join Bool A} true a @ x) [(x = 1) -> <x> (join{Join Bool A} false a @ -x)]
+
+thinb (A : U) : Bool -> Susp A = split
+  true -> north
+  false -> south
+
+thin_j (A : U) (a : A) : (b : Bool) -> Id (Susp A) (thinb A b) south = split
+  true -> <x> merid{Susp A} a @ x
+  false -> <_> south
+
+thin (A : U) : Join Bool A -> Susp A = split
+   joinl b -> thinb A b
+   joinr _ -> south
+   join b a @ x -> thin_j A a b @ x
+
+fat_thin (A : U) : (t : Susp A) -> Id (Susp A) (thin A (fatten A t)) t = split
+  north -> <_> north
+  south -> <_> south
+  merid a @ x -> <_> merid{Susp A} a @ x
+
+thin_fat_b (A : U) : (b : Bool) -> Id (Join Bool A) (fatten A (thinb A b)) (joinl b) = split
+  true -> <_> joinl true
+  false -> <_> joinl false
+
+thin_fat_j (A : U) (a : A) : (b : Bool) 
+           -> IdP (<x> Id (Join Bool A) (fatten A (thin_j A a b @ x)) (join{Join Bool A} b a @ x))
+                  (thin_fat_b A b)
+                  (<x> join{Join Bool A} false a @ x) = split
+  true -> <x> <y> 
+     eliminate_composite_top_right (Join Bool A)
+       (joinl true) (joinl false) (joinl true) (joinr a)
+       (<x> join{Join Bool A} true a @ x) 
+       (<x> join{Join Bool A} true a @ x)
+       (<_> joinl true)
+        (<x> join{Join Bool A} false a @ x)
+       (<x><_> join{Join Bool A} true a @ x) @ x @ y
+  false -> <x><y> join{Join Bool A} false a @ x/\y
+
+thin_fat (A : U) : (f : Join Bool A) -> Id (Join Bool A) (fatten A (thin A f)) f = split
+  joinl b -> thin_fat_b A b
+  joinr a -> <x> join{Join Bool A} false a @ x
+  join b a @ x -> <y> thin_fat_j A a b @ x @ y
+
+JoinBool_is_Susp (A : U) : Id U (Join Bool A) (Susp A) = 
+  ua (Join Bool A) (Susp A) (thin A) (fatten A) (fat_thin A) (thin_fat A)

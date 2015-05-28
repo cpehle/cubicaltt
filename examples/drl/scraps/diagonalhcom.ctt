@@ -1,0 +1,10 @@
+module diagonhcom where
+
+  import prelude
+
+  test (A0 : U) (A1 : U) (A : Id U A0 A1)
+       = <ry> <ry'> 
+         transport 
+         (com (<z> A @ ((ry /\ ry') \/ (ry /\ -z) \/ (ry /\ z)))
+              ?)
+         ?

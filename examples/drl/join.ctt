@@ -1,0 +1,8 @@
+module join where
+
+import prelude
+
+data Join (A : U) (B : U) = joinl (a : A)
+                          | joinr (b : B)
+                          | join (a:A) (b : B) <i> [(i=0) -> joinl a, (i=1) -> joinr b]
+

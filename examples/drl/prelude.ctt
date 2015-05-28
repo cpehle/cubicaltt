@@ -1,0 +1,353 @@
+module prelude where
+
+-- ----------------------------------------------------------------------
+-- Unit 
+
+-- ----------------------------------------------------------------------
+-- Identity type
+
+Id (A : U) (a0 a1 : A) : U = IdP (<i> A) a0 a1
+
+refl (A : U) (a : A) : Id A a a = <i> a
+
+-- ----------------------------------------------------------------------
+-- univalence 
+
+ua (A B : U) (f : A -> B) (g : B -> A)
+      (s : (y:B) -> Id B (f (g y)) y)
+      (t : (x:A) -> Id A (g (f x)) x) : Id U A B =
+      <i> glue B [ (i = 0) -> (A,f,g,s,t) ]
+
+idfun (A : U) (a : A) : A = a
+
+-- isoIdRef (A : U) :
+--   Id (Id U A A) (refl U A) (isoId A A (idfun A) (idfun A) (refl A) (refl A)) =
+--   <i j> glueLine j i A
+
+-- ----------------------------------------------------------------------
+-- hlevels
+
+Contractible (A : U) : U = (a : A) * ((b : A) -> Id A a b)
+HProp (A : U) : U = (a b : A) -> Id A a b
+HSet (A : U) : U = (a b : A) -> HProp (Id A a b)
+OneType (A : U) : U = (a b : A) -> HSet (Id A a b)
+
+raise_Contractible_Prop (A : U) (Alevel : Contractible A) : HProp A = 
+  \ (a : A) (b : A) -> <x> comp A (Alevel.2 a @ -x) [(x=1) -> <x> Alevel.2 b @ x]
+
+raise_Prop_Set (A : U) (h : HProp A) (a b : A) (p q : Id A a b) : Id (Id A a b) p q =
+ <j i> comp A a [ (i=0) -> h a a
+                , (i=1) -> h a b
+                , (j=0) -> h a (p @ i)
+                , (j=1) -> h a (q @ i)]
+
+HProp_level (A : U) (f g : HProp A) : Id (HProp A) f g =
+ <i> \(a b :A) -> (raise_Prop_Set A f a b (f a b) (g a b)) @ i
+
+HSet_level (A : U) (f g : HSet A) : Id (HSet A) f g =
+ <i> \(a b :A) -> (HProp_level (Id A a b) (f a b) (g a b)) @ i
+
+Pi_level_prop (A : U) (B : A -> U) (h : (x : A) -> HProp (B x))
+       (f0 f1 : (x : A) -> B x) : Id ((x : A) -> B x) f0 f1
+  = <i> \ (x:A) -> (h x (f0 x) (f1 x)) @ i
+
+-- ----------------------------------------------------------------------
+-- basic types
+
+data Unit = tt
+
+-- for controling reduction
+STUCK : Unit = ?
+NONSTUCK : Unit = tt
+
+Contractible_level (A : U) : HProp (Contractible A) = 
+  \ (a : Contractible A) (b : Contractible A) -> eq a.1 a.2 b.1 b.2 where
+  square (c1 : A) (eq1 : (x : A) -> Id A c1 x) (c2 : A) (eq2 : (x : A) -> Id A c2 x) (a : A) :
+         Unit -> IdP (<x> Id A (eq1 c2 @ x) a)
+             (eq1 a) (eq2 a) = split tt -> ?
+--         <x><y> eq1 (eq1 c2 @ x) @ y
+         
+  eq (c1 : A) (eq1 : (x : A) -> Id A c1 x) (c2 : A) (eq2 : (x : A) -> Id A c2 x) :
+        Id (Contractible A) (c1 , eq1) (c2, eq2) = 
+        <x> (eq1 c2 @ x , \ (a : A) -> <y> square c1 eq1 c2 eq2 a STUCK @ x @ y)
+
+
+data Void =
+
+abort (A : U) : Void -> A = split{}
+
+Unit_level : HProp Unit = rem
+  where rem1 : (x:Unit) -> Id Unit x tt = split tt -> refl Unit tt
+        rem (x:Unit) : (y:Unit) -> Id Unit x y = split tt -> rem1 x
+
+Void_level : HProp Void = \ (x y:Void) -> abort (Id Void x y) x
+
+data Either (A B : U) = inl (a : A)
+                      | inr (b : B)
+
+Times (A B : U) : U = (_ : A) * B
+
+-- Times_level (A B :U) (pA: prop A) (pB: A -> prop B) : prop (and A B) = 
+--  \ (u v:and A B) -> <i>((pA u.1 v.1)@i, (pB u.1 u.2 v.2)@i)
+
+data Bool = true | false
+
+-- ----------------------------------------------------------------------
+-- path stuff
+
+
+compId (A : U) (a b c : A) (p : Id A a b) (q : Id A b c) : Id A a c =
+  <i> comp A (p @ i) [ (i = 1) -> q ]
+
+compU (A B C : U) (p : Id U A B) (q : Id U B C) : Id U A C = 
+  <x> comp U (p @ x) [(x=1) -> q]
+
+Singleton_level (A : U) (a : A) : Contractible ((b : A) * Id A a b)  = 
+  ( (a , <_> a) , \ (bp : ((b : A) * Id A a b)) -> <x> (bp.2 @ x , <y> bp.2 @ (x/\y)) ) 
+
+J (A : U) (a : A) (C : (x : A) -> Id A a x -> U)
+  (d : C a (refl A a)) (b : A) (p : Id A a b) 
+  : C b p = 
+  transport (<z> C ((sc@z).1) ((sc@z).2)) d where
+    sc : Id ((b : A) * Id A a b) (a, <_> a) (b, p) = (Singleton_level A a).2 (b,p)
+
+
+ap (A : U) (B : A -> U) 
+   (f : (x : A) -> B x)
+   (a0 : A) (a1 : A) (a : Id A a0 a1) :
+   IdP (<x> B (a @ x)) (f a0) (f a1) =
+   <x> f (a @ x)
+
+-- coe a : b -> c = (b/\c) \/ (b/\-a) \/ (c/\a)
+-- coe z : x -> 0 = (x/\-z) 
+-- coe z : 1 -> y = y \/ -z \/ (z/\y)
+
+fill0 (A0 : U) (A1 : U) (A : Id U A0 A1) (a0 : A0) : IdP A a0 (transport A a0) =
+   <x> transport (<y> A @ (x/\y)) a0
+
+hom_to_het_1_path (A0 : U) : (A1 : U) (A : Id U A0 A1)
+                (a0 : A0) (a1 : A1) ->
+                Id U (Id A1 (transport A a0) a1) (IdP A a0 a1) =
+    J U A0 (\ (A1 : U) (A : Id U A0 A1) -> 
+              (a0 : A0) (a1 : A1) -> Id U (Id A1 (transport A a0) a1) (IdP A a0 a1))
+           (\ (a0 : A0) (a1 : A0) -> <_> (Id A0 a0 a1) )
+
+hom_to_het_1 (A0 : U) (A1 : U) (A : Id U A0 A1)
+                (a0 : A0) (a1 : A1)  
+                (p : Id A1 (transport A a0) a1) : IdP A a0 a1 = 
+  transport (hom_to_het_1_path A0 A1 A a0 a1) p
+
+hom_to_het_0_path (A0 : U) : (A1 : U) (A : Id U A0 A1)
+                (a0 : A0) (a1 : A1) ->
+                Id U (Id A0 a0 (transport (<x> A @ -x) a1)) (IdP A a0 a1) =
+    J U A0 (\ (A1 : U) (A : Id U A0 A1) -> 
+              (a0 : A0) (a1 : A1) -> Id U (Id A0 a0 (transport (<x> A @ -x) a1)) (IdP A a0 a1))
+           (\ (a0 : A0) (a1 : A0) -> <_> (Id A0 a0 a1) )
+
+move_transport_right_path (A0 : U) (A1 : U) (A : Id U A0 A1)
+                          (a0 : A0) (a1 : A1) :
+                          Id U (Id A1 (transport A a0) a1) (Id A0 a0 (transport (<x> A @ -x) a1)) =
+   compU (Id A1 (transport A a0) a1)
+         (IdP A a0 a1)
+         (Id A0 a0 (transport (<x> A @ -x) a1))
+         (hom_to_het_1_path A0 A1 A a0 a1)
+         (<x> hom_to_het_0_path A0 A1 A a0 a1 @ -x)
+
+transport_inv (A0 : U) (A1 : U) (A : Id U A0 A1) (a1 : A1) 
+                 : Id A1 (transport A (transport (<x> A @ -x) a1)) a1 = 
+    J U A0 (\ (A1 : U) (A : Id U A0 A1) -> (a1 : A1) -> Id A1 (transport A (transport (<x> A @ -x) a1)) a1)
+           (\ (a1 : A0) -> <_> a1)
+           A1 A a1
+
+-- FIXME there should be a more direct proof
+-- but normal form seems not that bad
+funext_het_l (A0 A1 : U) (A : Id U A0 A1) :
+             (B0 : A0 -> U) (B1 : A1 -> U) (B : IdP (<x> A @ x -> U) B0 B1) 
+             (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A1) -> B1 a1) 
+             (f : (a0 : A0) -> IdP (<x> (B @ x) ((fill0 A0 A1 A a0) @ x)) (f0 a0) (f1 (transport A a0))) ->
+             IdP (<x> (a : A @ x) -> (B @ x) a) f0 f1 = 
+             J U A0 (\ (A1 : U) (A : Id U A0 A1) ->
+                       (B0 : A0 -> U) (B1 : A1 -> U) (B : IdP (<x> A @ x -> U) B0 B1) 
+                       (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A1) -> B1 a1) 
+                       (f : (a0 : A0) -> IdP (<x> (B @ x) ((fill0 A0 A1 A a0) @ x)) (f0 a0) (f1 (transport A a0))) 
+                       -> IdP (<x> (a : A @ x) -> (B @ x) a) f0 f1)
+                    (\ (B0 : A0 -> U) (B1 : A0 -> U) (B : IdP (<_> A0 -> U) B0 B1) 
+                       (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A0) -> B1 a1) 
+                       (f : (a0 : A0) -> IdP (<x> (B @ x) a0) (f0 a0) (f1 a0)) 
+                       -> <x> \ (a : A0) -> f a @ x) 
+                    A1 A
+
+funext3 (A0 A1 : U) (A : Id U A0 A1) 
+        (B0 : A0 -> U) (B1 : A1 -> U) (B : IdP (<x> A @ x -> U) B0 B1) 
+        (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A1) -> B1 a1) 
+        (f : (a0 : A0) (a1 : A1) (a : IdP A a0 a1) -> IdP (<x> (B @ x) (a @ x)) (f0 a0) (f1 a1)) : Unit -> 
+        IdP (<x> (a : A @ x) -> B @ x a) f0 f1 = split 
+   tt -> 
+      funext_het_l A0 A1 A B0 B1 B f0 f1 (\ (a0 : A0) -> f a0 (transport A a0) (fill0 A0 A1 A a0))
+
+funext3_step (S : Unit) (A0 : U) : Unit -> (A1 : U) (A : Id U A0 A1) 
+             (B0 : A0 -> U) (B1 : A1 -> U) (B : IdP (<x> A @ x -> U) B0 B1) 
+             (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A1) -> B1 a1) 
+             (f : (a0 : A0) (a1 : A1) (a : IdP A a0 a1) -> IdP (<x> (B @ x) (a @ x)) (f0 a0) (f1 a1)) 
+             (a0 : A0) (a1 : A1) (a : IdP A a0 a1) ->
+               Id (IdP (<x> B @ x (a @ x)) (f0 a0) (f1 a1))
+                  (<x> (funext3 A0 A1 A B0 B1 B f0 f1 f S) @ x (a @ x))
+                  (f a0 a1 a) = split 
+   tt -> 
+            J U A0 (\ (A1 : U) (A : Id U A0 A1) ->
+                   (B0 : A0 -> U) (B1 : A1 -> U) (B : IdP (<x> A @ x -> U) B0 B1) 
+                   (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A1) -> B1 a1) 
+                   (f : (a0 : A0) (a1 : A1) (a : IdP A a0 a1) -> IdP (<x> (B @ x) (a @ x)) (f0 a0) (f1 a1)) 
+                   (a0 : A0) (a1 : A1) (a : IdP A a0 a1) ->
+                     Id (IdP (<x> B @ x (a @ x)) (f0 a0) (f1 a1))
+                        (<x> (funext3 A0 A1 A B0 B1 B f0 f1 f S) @ x (a @ x))
+                        (f a0 a1 a))
+                (\ (B0 : A0 -> U) (B1 : A0 -> U) (B : Id (A0 -> U) B0 B1) 
+                   (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A0) -> B1 a1) 
+                   (f : (a0 : A0) (a1 : A0) (a : Id A0 a0 a1) -> IdP (<x> (B @ x) (a @ x)) (f0 a0) (f1 a1)) 
+                   (a0 : A0) -> 
+                   J A0 a0 (\ (a1 : A0) (a : Id A0 a0 a1) -> 
+                           Id (IdP (<x> B @ x (a @ x)) (f0 a0) (f1 a1))
+                              (<x> (funext3 A0 A0 (<_> A0) B0 B1 B f0 f1 f S) @ x (a @ x))
+                              (f a0 a1 a))
+                        (unstuck B0 B1 B f0 f1 f a0 S)) where 
+      unstuck (B0 : A0 -> U) (B1 : A0 -> U) (B : Id (A0 -> U) B0 B1) 
+             (f0 : (a0 : A0) -> B0 a0) (f1 : (a1 : A0) -> B1 a1) 
+             (f : (a0 : A0) (a1 : A0) (a : Id A0 a0 a1) -> IdP (<x> (B @ x) (a @ x)) (f0 a0) (f1 a1)) 
+             (a0 : A0) : (S : Unit)
+              -> Id (IdP (<x> B @ x a0) (f0 a0) (f1 a0)) (<x> (funext3 A0 A0 (<_> A0) B0 B1 B f0 f1 f S) @ x a0) (f a0 a0 (<_> a0)) = split
+        tt -> (<_> (f a0 a0 (<_> a0))) 
+
+funext3_constant_range (A0 A1 : U) (A : Id U A0 A1) 
+                       (B : U)
+                       (f0 : A0 -> B) (f1 : A1 -> B) 
+                       (f : (a0 : A0) (a1 : A1) (a : IdP A a0 a1) -> Id B (f0 a0) (f1 a1)) :
+                       IdP (<x> (a : A @ x) -> B) f0 f1 = 
+   funext3 A0 A1 A (\ (a : A0) -> B) (\ (a : A1) -> B) (<x> \ (a : A @ x) -> B) f0 f1 f STUCK
+
+funext3_constant_range_step (A0 A1 : U) (A : Id U A0 A1) 
+                            (B : U)
+                            (f0 : A0 -> B) (f1 : A1 -> B) 
+                            (f : (a0 : A0) (a1 : A1) (a : IdP A a0 a1) -> Id B (f0 a0) (f1 a1)) 
+                            (a0 : A0) (a1 : A1) (a : IdP A a0 a1) : 
+                            Id (Id B (f0 a0) (f1 a1)) 
+                               (<x> (funext3_constant_range A0 A1 A B f0 f1 f) @ x (a @ x))
+                               (f a0 a1 a) = 
+   funext3_step STUCK A0 STUCK A1 A (\ (a : A0) -> B) (\ (a : A1) -> B) (<x> \ (a : A @ x) -> B) f0 f1 f a0 a1 a 
+
+whisker_square_bot (A : U) (a0 a1 : A) (b0 b1 : A)
+                 (top : Id A a0 a1)
+                 (bot : Id A b0 b1)
+                 (left : Id A a0 b0)
+                 (right : Id A a1 b1) 
+                 (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) 
+                 (bot' : Id A b0 b1) (p : Id (Id A b0 b1) bot bot') : (IdP (<x> Id A (top @ x) (bot' @ x)) left right) = 
+ <x> <y> comp A (sq @ x @ y) [(y = 1) -> <z> p @ z @ x ]
+
+whisker_square_top (A : U) (t0 t1 : A) (b0 b1 : A)
+                   (top : Id A t0 t1)
+                   (bot : Id A b0 b1)
+                   (left : Id A t0 b0)
+                   (right : Id A t1 b1) 
+                   (sq : IdP (<x> Id A (top @ x) (bot @ x)) left right) 
+                   (top' : Id A t0 t1) (p : Id (Id A t0 t1) top top') : (IdP (<x> Id A (top' @ x) (bot @ x)) left right) = 
+  <x> <y> comp A (sq @ x @ y) [(y = 0) -> <z> p @ z @ x]
+
+comp_inv_r (A : U) (a0 : A) : (a1 : A) (p : Id A a0 a1)
+          -> Id (Id A a0 a0) (<y> comp A (p @ y) [ (y = 1) -> <y> p @ -y ])
+                             (<_> a0) = 
+   J A a0 (\ (a1 : A) (p : Id A a0 a1) ->
+             Id (Id A a0 a0) (<y> comp A (p @ y) [ (y = 1) -> <y> p @ -y ]) (<_> a0))
+          (<_> <_> a0)
+
+comp_inv_r2 (A : U) (a0 : A) : (a1 : A) (p : Id A a0 a1)
+          -> Id (Id A a1 a1) (<y> comp A a0 [ (y = 0) -> p, (y = 1) -> <y> p @ y ])
+                             (<_> a1) = 
+   J A a0 (\ (a1 : A) (p : Id A a0 a1) ->
+             Id (Id A a1 a1) (<y> comp A a0 [ (y = 0) -> p, (y = 1) -> <y> p @ y ]) (<_> a1))
+          (<_> <_> a0)
+
+eliminate_composite_top_right (A : U) (t0 t1 b0 b1 : A) 
+        (top : Id A t0 b1) 
+        (bot : Id A b0 b1)
+        (left : Id A t0 b0)
+        (right : Id A t1 b1) 
+        (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > b1)) : 
+        IdP (<x> Id A ((compId A t0 b1 t1 top (<z> right @ -z)) @ x) (bot @ x)) left right = 
+      J A t1 ( \ (b1 : A) (right : Id A t1 b1) -> 
+                 (top : Id A t0 b1) 
+                 (bot : Id A b0 b1)
+                 (left : Id A t0 b0)
+                 (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > b1)) 
+                 -> IdP (<x> Id A ((compId A t0 b1 t1 top (<z> right @ -z)) @ x) (bot @ x)) left right 
+                 ) 
+             ( \ (top : Id A t0 t1) 
+                 (bot : Id A b0 t1)
+                 (left : Id A t0 b0)
+                 (sq : IdP (<x> Id A (top @ x) (bot @ x)) left (< _ > t1)) 
+                 -> sq
+                 ) b1 right top bot left sq
+
+inv_path (A : U) (a b : A) : Id U (Id A a b) (Id A b a) = 
+   ua (Id A a b) (Id A b a) 
+      (\ (p : Id A a b) -> <x> p @ -x)
+      (\ (p : Id A b a) -> <x> p @ -x)
+      (\ (p : Id A b a) -> <_> p)
+      (\ (p : Id A a b) -> <_> p)
+
+constSquare (A : U) (a : A) (p : Id A a a) : 
+            IdP (<x> Id A (p @ x) (p @ x))
+                p
+                p =
+  <i j> comp A a
+     [(i = 0) -> <k> p @ (j \/ - k),
+      (i = 1) -> <k> p @ (j /\ k),
+      (j = 0) -> <k> p @ (i \/ - k),
+      (j = 1) -> <k> p @ (i /\ k)]
+
+-- ----------------------------------------------------------------------
+-- equivalences
+
+Fiber (A B:U) (f:A->B) (b:B) : U = (x:A) * Id B b (f x)
+
+Fiber_idfun_level (A:U) (a:A) : HProp (Fiber A A (\ (x:A) -> x) a) = rem
+ where F : U = Fiber A A (\ (x:A) -> x) a
+       rem (u v:F) : Id F u v = <i>(rem1 @ i,rem2 @ i)
+         where x : A = u.1
+               p : Id A a x = u.2
+               y : A = v.1
+               q : Id A a y = v.2
+               rem1 : Id A x y = <i>comp A a [(i=0) -> p,(i=1) -> q]
+               rem2 : IdP (<i>Id A a (rem1@i)) p q = <i j>comp A a [(i=0) -> <l>p@(j/\l),(i=1) -> <l>q@(j/\l)]
+
+-- isContrProp (A:U) : prop (isContr A) = 
+--  lemPropAnd (prop A) A (propIsProp A) (\ (h:prop A) -> h)
+
+IsEquiv (A B:U) (f:A->B) : U = (y:B) -> Contractible (Fiber A B f y)
+
+idfun_IsEquiv (A:U) : IsEquiv A A (idfun A) = \ (a:A) -> ((a,refl A a), Fiber_idfun_level A a (a,refl A a))
+
+IsEquiv_level (A B : U) (f : A -> B) : HProp (IsEquiv A B f)
+  = Pi_level_prop B (\ (y:B) -> Contractible (Fiber A B f y)) (\ (y:B) -> Contractible_level (Fiber A B f y))
+
+uae (A B : U) (f : A -> B) (is:IsEquiv A B f) : Id U A B = 
+ ua A B f g (\ (y:B) -> <i>(s y)@-i) t
+ where
+   rem1 (y:B) : HProp (Fiber A B f y) =  raise_Contractible_Prop (Fiber A B f y) (is y)
+   rem2 (y:B) : Fiber A B f y         =  (is y).1
+   g (y:B) : A = (rem2 y).1
+   s (y:B) : Id B y (f (g y)) = (rem2 y).2
+   rem3 (x:A) : Id B (f x) (f (g (f x))) = s (f x)
+   rem4 (x:A) : Id (Fiber A B f (f x)) (g (f x),rem3 x) (x,refl B (f x)) = 
+     rem1 (f x) (g (f x),rem3 x) (x,refl B (f x))
+   t (x:A) : Id A (g (f x)) x = <i> ((rem4 x)@i).1
+    
+Equiv (A B : U) : U = (f : A -> B) * IsEquiv A B f
+
+use_IsEquiv_level_het (A B : U) (f g : A -> B) (p : Id (A -> B) f g) 
+                    (e1 : IsEquiv A B f) (e2 : IsEquiv A B g)
+                  : IdP (<x> IsEquiv A B (p @ x)) e1 e2 = 
+   J (A -> B) f (\ (g : A -> B) (p : Id (A -> B) f g) -> (e1 : IsEquiv A B f) (e2 : IsEquiv A B g) -> IdP (<x> IsEquiv A B (p @ x)) e1 e2)
+                (\ (e1 : IsEquiv A B f) (e2 : IsEquiv A B f) -> IsEquiv_level A B f e1 e2)
+                g p e1 e2
+

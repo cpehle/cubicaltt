@@ -1,0 +1,113 @@
+
+module hopffib where
+
+import prelude
+import spheres
+import join
+import circle12
+import suspjoinbool
+
+-- definition
+
+H : S2 -> U = split
+  north -> S1
+  south -> S1
+  merid a @ x -> rotpath a @ x
+
+-- total space of H
+TH : U = (c : S2) * H c
+
+-- ----------------------------------------------------------------------
+-- TH and Join
+-- this is the flattening lemma, together with the equivalence between the two pushout spans
+  
+Join_to_TH : Join S1 S1 -> TH = split
+  joinl a -> (north , a)
+  joinr b -> (south , b)
+  join a b @ x -> (merid{S2} (findRot a b).1 @ x , (findRot a b).2 @ x) 
+
+TH_to_Join' : (x : S2) -> H x -> Join S1 S1 = split
+  north -> \ (x : S1) -> joinl x
+  south -> \ (x : S1) -> joinr x
+  merid c @ x -> (funext3_constant_range S1 S1 (rotpath c) (Join S1 S1) (\ (x : S1) -> joinl x) (\ (x : S1) -> joinr x)
+                  (\ (a0 : S1) (a1 : S1) (p : IdP (rotpath c) a0 a1) -> <x> join{Join S1 S1} a0 a1 @ x))@x
+
+TH_to_Join (a : TH) : Join S1 S1 = TH_to_Join' a.1 a.2
+
+Join_to_TH_c1 : (a : Join S1 S1) -> Id (Join S1 S1) (TH_to_Join (Join_to_TH a)) a = split
+  joinl a -> <_> joinl a
+  joinr a -> <_> joinr a
+  join a b @ x -> <y> (funext3_constant_range_step
+                         S1 S1 (rotpath ((findRot a b).1)) (Join S1 S1) (\ (x : S1) -> joinl x) (\ (x : S1) -> joinr x)
+                         (\ (a0 : S1) (a1 : S1) (p : IdP (rotpath ((findRot a b).1)) a0 a1) -> <x> join{Join S1 S1} a0 a1 @ x)
+                         a b (findRot a b).2) @ y @ x 
+
+Join_to_TH_c2' : (a : S2) -> (h : H a) -> Id TH (Join_to_TH (TH_to_Join' a h)) (a , h) = split
+  north -> \ (h : S1) -> <_> (north , h)
+  south -> \ (h : S1) -> <_> (south , h)
+  merid c @ x -> want @ x where
+    -- use contractibility
+    want' (a0 a1 : S1) (p : IdP (rotpath c) a0 a1) : Unit -> 
+          IdP (<x> Id TH (merid{S2} (findRot a0 a1).1 @ x , (findRot a0 a1).2 @ x)
+                         ((merid {Susp (S1)} c @ x,p @ x)))
+              (<_> (north, a0))
+              (<_> (south , a1)) = split
+      tt -> <x> <y> (merid{S2} ((anyRot a0 a1 (c,p) @ y).1) @ x , ((anyRot a0 a1 (c,p) @ y).2) @ x)
+
+    -- do a funext3 and then reduce the funext3 in the term
+    want : IdP (<x> (h : rotpath c @ x) -> Id TH (Join_to_TH (TH_to_Join' (merid{S2} c @ x) h)) ((merid{S2} c @ x) , h))
+                           (\ (h : S1) -> <_> (north , h))
+                           (\ (h : S1) -> <_> (south , h)) = 
+           funext3 S1 S1 (rotpath c) 
+                   (\ (h : S1) -> Id TH (Join_to_TH (TH_to_Join' north h)) (north , h))
+                   (\ (h : S1) -> Id TH (Join_to_TH (TH_to_Join' south h)) (south , h))
+                   (<z> \ (h : rotpath c @ z) -> Id TH (Join_to_TH (TH_to_Join' (merid{S2} c @ z) h)) ((merid{S2} c @ z) , h))
+                   (\ (h : S1) -> <_> (north , h))
+                   (\ (h : S1) -> <_> (south , h))
+                   (\ (a0 a1 : S1) (p : IdP (rotpath c) a0 a1) -> 
+                       whisker_square_top TH
+                           (north, a0) (south , a1) (north, a0) (south , a1)
+                           (<x> (merid{S2} (findRot a0 a1).1 @ x , (findRot a0 a1).2 @ x))
+                           (<x> ((merid {Susp (S1)} c @ x,p @ x)))
+                           (<_> (north, a0)) (<_> (south , a1))
+                           (<x> <y> want' a0 a1 p STUCK @ x @ y)
+                           (<x> Join_to_TH (TH_to_Join' (merid {Susp (S1)} c @ x) (p @ x)))
+                           (<x> <y> Join_to_TH ((funext3_constant_range_step S1 S1 (rotpath c)
+                                                 (Join S1 S1) (\ (x : S1) -> joinl x) (\ (x : S1) -> joinr x)
+                                                 (\ (a0 : S1) (a1 : S1) (p : IdP (rotpath c) a0 a1) -> <x> join{Join S1 S1} a0 a1 @ x)
+                                                 a0 a1 p)
+                                                @ -x @ y)))
+                   STUCK
+                          
+TH_is_Join : Id U TH (Join S1 S1) = ua TH (Join S1 S1) TH_to_Join Join_to_TH Join_to_TH_c1 (\ (p : TH) -> Join_to_TH_c2' p.1 p.2)
+
+-- ----------------------------------------------------------------------
+-- which is S3 
+
+S3_is_JoinS1S1 : Id U S3 (Join S1 S1) = 
+  compU S3 (Join Bool S2) (Join S1 S1) 
+        (<x> JoinBool_is_Susp S2 @ -x)
+        (compU (Join Bool S2) (Join Bool (Join Bool S1)) (Join S1 S1)
+               (<x> Join Bool (JoinBool_is_Susp S1 @ -x))
+               (compU (Join Bool (Join Bool S1)) (Join (Join Bool Bool) S1) (Join S1 S1)
+                      (Join_assoc_path Bool Bool S1)
+                      (compU (Join (Join Bool Bool) S1) (Join (Susp Bool) S1) (Join S1 S1)
+                             (<x> Join (JoinBool_is_Susp Bool @ x) S1)
+                             (<x> Join (S1_1_is_S1_2 @ -x) S1))))
+
+S3_is_TH : Id U S3 TH = 
+  compU S3 (Join S1 S1) TH S3_is_JoinS1S1 (<x> TH_is_Join @ -x)
+
+-- ----------------------------------------------------------------------
+-- tests
+
+THP : PointedType = (TH , (north, base))
+
+S3_to_TH_P_constant : PointedMap S3P THP = (\ (x : S3) -> (north,base), <_> (north, base)) 
+S3_to_TH_P : PointedMap S3P THP = (\ (x : S3) -> transport S3_is_TH x, <_> (north, base))
+
+Omega3S3_to_Omega3TH : PointedMap (Omega (Omega (Omega S3P))) (Omega (Omega (Omega THP))) =
+         OmegaF (Omega (Omega S3P)) (Omega (Omega THP))
+                (OmegaF (Omega S3P) (Omega THP) (OmegaF S3P THP S3_to_TH_P))
+
+test : (Omega (Omega (Omega THP))).1 = Omega3S3_to_Omega3TH.1 loopS3

@@ -1,0 +1,11 @@
+
+module smash where
+
+import pointedtypes
+
+data Smash (A : PointedType) (B : PointedType) = 
+     spair (a : A.1) (b : B.1)
+   | smash (a : A.1) (b : B.1) <x> [(x=0) -> spair a B.2,
+                                    (x=1) -> spair A.2 b]
+
+SmashP (A : PointedType) (B : PointedType) : PointedType = (Smash A B, spair A.2 B.2)
