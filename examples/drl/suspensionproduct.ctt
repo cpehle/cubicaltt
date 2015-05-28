@@ -9,92 +9,153 @@ import wedge
 import smash
 import join
 
--- Σ(X×Y) ≃ ΣX ∨ ΣY ∨ Σ(X∧Y)
+-- Σ(A×B) ≃ ΣA ∨ Σ(A∧B) ∨ ΣB 
+-- Proof:
+--   Σ(A×B) 
+-- ≃ JoinCones A B
+-- ≃ Wedges A B 
+-- ≃ ΣA ∨ Join A B ∨ ΣB 
+-- ≃ ΣA ∨ Σ(A∧B) ∨ ΣB 
+
+-- picture this as the join in the middle with cones
+-- glues onto the left and right
+
+data JoinCones (A : U) (B : U) = 
+    left
+  | middle (j : Join A B)
+  | right
+  | gluel (a : A) <x> [(x=0) -> left, (x=1) -> middle (joinl a)]
+  | gluer (b : B) <x> [(x=0) -> right, (x=1) -> middle (joinr b)]
+
+-- Wedges A B is basically ΣA ∨ Join A B ∨ ΣB 
+-- but with the right suspension glued to (joinr b0) instead of (joinl a0)
+
+-- glues north and inl a0
+WedgesL (A : PointedType) (B : PointedType) : PointedType = WedgeP (SuspP A) (JoinP A B)
+
+-- base point is inr B.2
+WedgesLP (A : PointedType) (B : PointedType) : PointedType = ((WedgesL A B).1 ,  winr (joinr B.2))
+
+Wedges (A : PointedType) (B : PointedType) : PointedType = WedgeP (WedgesLP A B) (SuspP B)
 
 -- ----------------------------------------------------------------------
+-- step 1: suspension of times is JoinCones
 
-RHS (A : PointedType) (B : PointedType) : PointedType = WedgeP (WedgeP (SuspP A) (SuspP B)) (SuspP(SmashP A B))
+SuspTimes_to_JoinCones (A : U) (B : U) : Susp (Times A B) -> JoinCones A B = split
+  north -> left
+  south -> right
+  merid ab @ x -> comp (JoinCones A B) 
+                       (middle (join{Join A B} ab.1 ab.2 @ x))
+                       [(x=0) -> <y> gluel{JoinCones A B} ab.1 @ -y,
+                        (x=1) -> <y> gluer{JoinCones A B} ab.2 @ -y]
 
-{-
-to (A : PointedType) (B : PointedType) : Susp ((_ : A.1) * B.1) -> (RHS A B).1 = split 
-  north -> winl (winl north)
-  south -> winl (winr south)
-  merid ab @ x -> ?
--}
+Join_to_SuspTimes (A : U) (B : U) : Join A B -> Susp (Times A B) = split
+  joinl _ -> north
+  joinr _ -> south
+  join a b @ x -> merid{Susp (Times A B)} (a,b) @ x
 
-fromll (A : PointedType) (B : PointedType) : (SuspP A).1 -> (SuspP (TimesP A B)).1 = split
-  north -> north
-  south -> south
-  merid a @ x -> merid {(SuspP (TimesP A B)).1} (a , B.2) @ x
+JoinCones_to_SuspTimes (A : U) (B : U) : JoinCones A B -> Susp (Times A B) = split
+  left -> north
+  middle j -> Join_to_SuspTimes A B j
+  right -> south
+  gluel a @ x -> north
+  gluer b @ x -> south
+  
+SuspTimes_to_JoinCones_c1 (A : U) (B : U) : 
+  (s : Susp (Times A B)) -> 
+     Id (Susp (Times A B)) (JoinCones_to_SuspTimes A B (SuspTimes_to_JoinCones A B s)) s = split
+  north -> <_> north
+  south -> <_> south
+  merid p @ x -> <_> merid {Susp(Times A B)} p @ x
 
-fromlr (A : PointedType) (B : PointedType) : (SuspP B).1 -> (SuspP (TimesP A B)).1 = split
-  north -> north
-  south -> south
-  merid b @ x -> merid {(SuspP (TimesP A B)).1} (A.2 , b) @ x
+SuspTimes_to_JoinCones_c2_middle (A : U) (B : U) : (j : Join A B) -> 
+  Id (JoinCones A B) (SuspTimes_to_JoinCones A B (Join_to_SuspTimes A B j)) (middle j) = split
+  joinl a -> <x> gluel{JoinCones A B} a @ x
+  joinr b -> <x> gluer{JoinCones A B} b @ x
+  join a b @ x -> 
+        -- filler
+        <y> comp (JoinCones A B)  (middle (join {Join A B} a b @ x))
+                 [ (x=0) -> <z> gluel {JoinCones A B} a @ (y \/ -z),
+                   (x=1) -> <z> gluer {JoinCones A B} b @ (y \/ -z)] 
 
-froml (A : PointedType) (B : PointedType) : (WedgeP (SuspP A) (SuspP B)).1 -> (SuspP (TimesP A B)).1 = split
-  winl a -> fromll A B a
-  winr b -> fromlr A B b
-  wglue @ x -> north
-
-fromrm (A : PointedType) (B : PointedType) : (SmashP A B).1 -> Id ((SuspP (TimesP A B)).1) north south = split
-  spair a b -> <x> merid{((SuspP (TimesP A B)).1)}  (a,b) @ x
-  smash a b @ x -> <y> sq STUCK @ x @ y where 
-    sq : Unit -> Id (Id ((SuspP (TimesP A B)).1) north south)
-                    (<x> merid{((SuspP (TimesP A B)).1)} (a,B.2) @ x)
-                    (<x> merid{((SuspP (TimesP A B)).1)} (A.2,b) @ x) = split 
-       tt -> ?
-
-fromr (A : PointedType) (B : PointedType) : (SuspP (SmashP A B)).1 -> (SuspP (TimesP A B)).1 = split
-  north -> north
-  south -> south 
-  merid ab @ x -> fromrm A B ab @ x
-
-from (A : PointedType) (B : PointedType) : (RHS A B).1 -> (SuspP (TimesP A B)).1 = split
-  winl a -> froml A B a
-  winr b -> fromr A B b
-  wglue @ x -> north
+SuspTimes_to_JoinCones_c2 (A : U) (B : U) : 
+  (j : JoinCones A B) -> 
+     Id (JoinCones A B) (SuspTimes_to_JoinCones A B (JoinCones_to_SuspTimes A B j)) j = split
+  left -> <_> left
+  middle j -> SuspTimes_to_JoinCones_c2_middle A B j 
+  right -> <_> right
+  gluel a @ x -> <y> gluel{JoinCones A B} a @ (x/\y)
+  gluer a @ x -> <y> gluer{JoinCones A B} a @ (x/\y)
 
 -- ----------------------------------------------------------------------
+-- step 2: JoinCones is Wedges
 
-RHS (A : PointedType) (B : PointedType) : PointedType = WedgeP (WedgeP (RSuspP A) (RSuspP B)) (RSuspP(SmashP A B))
+joinls (A B : PointedType) (a a' : A.1) : Id (Join A.1 B.1) (joinl a) (joinl a') = 
+  <x> comp (Join A.1 B.1) (join{Join A.1 B.1} a B.2 @ x) [(x=1) -> <y> join{Join A.1 B.1} a' B.2 @ -y]
 
-to (A : PointedType) (B : PointedType) : RSusp (TimesP A B) -> (RHS A B).1 = split 
-  north -> winl (winl north)
-  merid ab @ x -> comp ((RHS A B).1) (winr (merid{RSusp (SmashP A B)} (spair ab.1 ab.2) @ x)) [(x=0) -> <x> wglue{(RHS A B).1} @ -x, (x=1) -> <x> wglue{(RHS A B).1} @ -x]
-  meridpt @ x y -> ?
+joinrs (A B : PointedType) (b b' : B.1) : Id (Join A.1 B.1) (joinr b) (joinr b') = 
+  <x> comp (Join A.1 B.1) (join{Join A.1 B.1} A.2 b @ -x) [(x=1) -> <y> join{Join A.1 B.1} A.2 b' @ y]
 
--- [ (x = 0) -> comp (Wedge ((Wedge ((RSusp (A),north), (RSusp (B),north)),winl north), (RSusp ((Smash (A, B),spair (A.2) (B.2))),north))) (winr (merid {RSusp ((Smash (A, B),spair (A.2) (B.2)))} (spair (A.2) (B.2)) @ y)) [ (y = 0) -> <!0> wglue {Wedge ((Wedge ((RSusp (A),north), (RSusp (B),north)),winl north), (RSusp ((Smash (A, B),spair (A.2) (B.2))),north))} @ -!0, (y = 1) -> <!0> wglue {Wedge ((Wedge ((RSusp (A),north), (RSusp (B),north)),winl north), (RSusp ((Smash (A, B),spair (A.2) (B.2))),north))} @ -!0 ], (x = 1) -> winl (winl north) ]
+JoinCones_to_Wedges (A B : PointedType) : JoinCones A.1 B.1 -> (Wedges A B).1 = split
+  left -> winl (winl south)
+  middle j -> winl (winr j)
+  right -> winr south
+  gluel a @ x -> winl (comp ((WedgesL A B).1)
+                            (wglue{(WedgesL A B).1} @ x)
+                            [(x=0) -> <y> winl (merid{Susp A.1} a @ y),
+                             (x=1) -> <y> winr (joinls A B A.2 a @ y)])
+  gluer b @ x -> comp (Wedges A B).1 
+                      (wglue{(Wedges A B).1} @ -x)
+                      [(x=0) -> <y> winr (merid{Susp B.1} b @ y),
+                       (x=1) -> <y> winl (winr (joinrs A B B.2 b @ y)) ]
 
-fromll (A : PointedType) (B : PointedType) : (RSuspP A).1 -> (RSuspP (TimesP A B)).1 = split
-  north -> north
-  merid a @ x -> merid {(RSuspP (TimesP A B)).1} (a , B.2) @ x
-  meridpt @ x y -> meridpt {(RSuspP (TimesP A B)).1} @ x @ y
+SuspA_to_JoinCones (A B : PointedType) : (SuspP A).1 -> JoinCones A.1 B.1 = split 
+  north -> middle(joinl A.2)
+  south -> left
+  merid a @ x -> gluel{JoinCones A.1 B.1} A.2 @ -x -- ignores a??
 
-fromlr (A : PointedType) (B : PointedType) : (RSuspP B).1 -> (RSuspP (TimesP A B)).1 = split
-  north -> north
-  merid b @ x -> merid {(RSuspP (TimesP A B)).1} (A.2 , b) @ x
-  meridpt @ x y -> meridpt {(RSuspP (TimesP A B)).1} @ x @ y
+SuspB_to_JoinCones (A B : PointedType) : (SuspP B).1 -> JoinCones A.1 B.1 = split 
+  north -> middle(joinr B.2)
+  south -> right
+  merid b @ x -> gluer{JoinCones A.1 B.1} B.2 @ -x -- ignores b??
 
-froml (A : PointedType) (B : PointedType) : (WedgeP (RSuspP A) (RSuspP B)).1 -> (RSuspP (TimesP A B)).1 = split
-  winl a -> fromll A B a
-  winr b -> fromlr A B b
-  wglue @ x -> north -- or something else?
+WedgesL_to_JoinCones (A B : PointedType) : (WedgesL A B).1 -> JoinCones A.1 B.1 = split
+  winl sa -> SuspA_to_JoinCones A B sa
+  winr j -> middle j
+  wglue @ x -> (middle (joinl A.2))
 
-fromrm (A : PointedType) (B : PointedType) : (SmashP A B).1 -> Id ((RSuspP (TimesP A B)).1) north north = split
-  spair a b -> <x> comp ((RSuspP ((TimesP A B))).1) (merid{((RSuspP (TimesP A B)).1)} (A.2,b) @ x) [(x=1) -> <x> (merid{((RSuspP (TimesP A B)).1)} (a,B.2) @ x)]
-  smash a b @ x -> ? where 
-    -- sq : Unit -> Id (Id ((RSuspP (TimesP A B)).1) north north)
-    --                 (<x> merid{((RSuspP (TimesP A B)).1)} (a,B.2) @ x)
-    --                 (<x> merid{((RSuspP (TimesP A B)).1)} (A.2,b) @ x) = split 
-    --    tt -> ?
+Wedges_to_JoinCones (A B : PointedType) : (Wedges A B).1 -> JoinCones A.1 B.1 = split 
+  winl l -> WedgesL_to_JoinCones A B l
+  winr sb -> SuspB_to_JoinCones A B sb
+  wglue @ x -> middle (joinr B.2) 
 
-fromr (A : PointedType) (B : PointedType) : (RSuspP (SmashP A B)).1 -> (RSuspP (TimesP A B)).1 = split
-  north -> north
-  merid ab @ x -> fromrm A B ab @ x
-  meridpt @ x y -> ?
+-- ----------------------------------------------------------------------
+-- step 3: Wedges A B equivalent to ΣA ∨ Join A B ∨ ΣB 
 
--- from (A : PointedType) (B : PointedType) : (RHS A B).1 -> (SuspP (TimesP A B)).1 = split
---   winl a -> froml A B a
---   winr b -> fromr A B b
---   wglue @ x -> north
+-- nice cost savings from ap!
+Wedges_is_desired_wedges (A : PointedType) (B : PointedType) : 
+  Id U
+     ((Wedges A B).1)
+     ((WedgeP (WedgeP (SuspP A) (JoinP A B)) (SuspP B)).1) = 
+ <x> (WedgeP ((WedgeP (SuspP A) (JoinP A B)).1 , path @ x) (SuspP B)).1 where
+   path : Id ((WedgeP (SuspP A) (JoinP A B)).1) (winr (joinr (B.2))) (winl north) = 
+     <x> comp ((WedgeP (SuspP A) (JoinP A B)).1)
+              (winr (join{(JoinP A B).1} A.2 B.2 @ -x))
+              [(x=1) -> <y> wglue{((WedgeP (SuspP A) (JoinP A B)).1)} @ -y]
+
+-- nice example of computation!
+Wedges_is_desired_wedges_prespt (A : PointedType) (B : PointedType) : 
+       Id ((WedgeP (WedgeP (SuspP A) (JoinP A B)) (SuspP B)).1)
+          (transport (Wedges_is_desired_wedges A B) (Wedges A B).2)            
+          ((WedgeP (WedgeP (SuspP A) (JoinP A B)) (SuspP B)).2) = 
+   -- after computation, we need
+   --    winl (winr (joinr (B.2))) = winl (winl north)
+   <x> winl (comp ((WedgesL A B).1)
+                  (winr (join{Join A.1 B.1} A.2 B.2 @ -x))
+                  [(x=1) -> <y> wglue{(WedgesL A B).1} @ -y])
+
+-- ----------------------------------------------------------------------
+-- put it all together
+
+-- for step 4: use Join A B is Susp(Smash A B) from other file
+

@@ -7,11 +7,6 @@ import join
 -- ----------------------------------------------------------------------
 -- suspension and join with booleans
 
--- join Bool A is a "fat" suspension, with an inm construct including A, and paths from N to inm(x) to S
--- inl true = N
--- inl false = S
--- inr x = inm x
-
 fatten (A : U) : Susp A -> Join Bool A = split
    north -> joinl true
    south -> joinl false
