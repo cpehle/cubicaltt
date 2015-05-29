@@ -27,6 +27,7 @@ data JoinCones (A : U) (B : U) =
   | gluel (a : A) <x> [(x=0) -> left, (x=1) -> middle (joinl a)]
   | gluer (b : B) <x> [(x=0) -> right, (x=1) -> middle (joinr b)]
 
+
 -- Wedges A B is basically ΣA ∨ Join A B ∨ ΣB 
 -- but with the right suspension glued to (joinr b0) instead of (joinl a0)
 
@@ -90,11 +91,13 @@ SuspTimes_to_JoinCones_c2 (A : U) (B : U) :
 -- ----------------------------------------------------------------------
 -- step 2: JoinCones is Wedges
 
-joinls (A B : PointedType) (a a' : A.1) : Id (Join A.1 B.1) (joinl a) (joinl a') = 
-  <x> comp (Join A.1 B.1) (join{Join A.1 B.1} a B.2 @ x) [(x=1) -> <y> join{Join A.1 B.1} a' B.2 @ -y]
+joinls (A B : PointedType) (a a' : A.1) : Unit -> Id (Join A.1 B.1) (joinl a) (joinl a') = split
+  tt -> 
+    <x> comp (Join A.1 B.1) (join{Join A.1 B.1} a B.2 @ x) [(x=1) -> <y> join{Join A.1 B.1} a' B.2 @ -y]
 
-joinrs (A B : PointedType) (b b' : B.1) : Id (Join A.1 B.1) (joinr b) (joinr b') = 
-  <x> comp (Join A.1 B.1) (join{Join A.1 B.1} A.2 b @ -x) [(x=1) -> <y> join{Join A.1 B.1} A.2 b' @ y]
+joinrs (A B : PointedType) (b b' : B.1) : Unit -> Id (Join A.1 B.1) (joinr b) (joinr b') = split
+ tt -> 
+    <x> comp (Join A.1 B.1) (join{Join A.1 B.1} A.2 b @ -x) [(x=1) -> <y> join{Join A.1 B.1} A.2 b' @ y]
 
 JoinCones_to_Wedges (A B : PointedType) : JoinCones A.1 B.1 -> (Wedges A B).1 = split
   left -> winl (winl south)
@@ -103,21 +106,25 @@ JoinCones_to_Wedges (A B : PointedType) : JoinCones A.1 B.1 -> (Wedges A B).1 = 
   gluel a @ x -> winl (comp ((WedgesL A B).1)
                             (wglue{(WedgesL A B).1} @ x)
                             [(x=0) -> <y> winl (merid{Susp A.1} a @ y),
-                             (x=1) -> <y> winr (joinls A B A.2 a @ y)])
+                             (x=1) -> <y> winr (joinls A B A.2 a STUCK @ y)])
   gluer b @ x -> comp (Wedges A B).1 
                       (wglue{(Wedges A B).1} @ -x)
                       [(x=0) -> <y> winr (merid{Susp B.1} b @ y),
-                       (x=1) -> <y> winl (winr (joinrs A B B.2 b @ y)) ]
+                       (x=1) -> <y> winl (winr (joinrs A B B.2 b STUCK @ y)) ]
 
 SuspA_to_JoinCones (A B : PointedType) : (SuspP A).1 -> JoinCones A.1 B.1 = split 
   north -> middle(joinl A.2)
   south -> left
-  merid a @ x -> gluel{JoinCones A.1 B.1} A.2 @ -x -- ignores a??
+  merid a @ x -> comp (JoinCones A.1 B.1) 
+                      (middle (joinls A B A.2 a STUCK @ x))
+                      [ (x=1) -> <x> gluel{JoinCones A.1 B.1} a @ -x]
 
 SuspB_to_JoinCones (A B : PointedType) : (SuspP B).1 -> JoinCones A.1 B.1 = split 
   north -> middle(joinr B.2)
   south -> right
-  merid b @ x -> gluer{JoinCones A.1 B.1} B.2 @ -x -- ignores b??
+  merid b @ x -> comp (JoinCones A.1 B.1) 
+                      (middle (joinrs A B B.2 b STUCK @ x))
+                      [ (x=1) -> <x> gluer{JoinCones A.1 B.1} b @ -x]
 
 WedgesL_to_JoinCones (A B : PointedType) : (WedgesL A B).1 -> JoinCones A.1 B.1 = split
   winl sa -> SuspA_to_JoinCones A B sa
@@ -128,6 +135,70 @@ Wedges_to_JoinCones (A B : PointedType) : (Wedges A B).1 -> JoinCones A.1 B.1 = 
   winl l -> WedgesL_to_JoinCones A B l
   winr sb -> SuspB_to_JoinCones A B sb
   wglue @ x -> middle (joinr B.2) 
+
+-- Wedges_to_JoinCones_c1 (A B : PointedType) : (j : JoinCones A.1 B.1) 
+--                        -> Id (JoinCones A.1 B.1) (Wedges_to_JoinCones A B (JoinCones_to_Wedges A B j)) j = split
+--   left -> <_> left
+--   middle j -> <_> middle j
+--   right -> <_> right
+--   gluel a @ x -> ? -- reassociate and cancel inverses
+--   gluer b @ x -> ?
+
+-- IdP (<!0> JoinCones (A.1, B.1))
+--      (comp (JoinCones (A.1, B.1))
+--            (middle (joinl (A.2)))
+--            [ (x = 0) -> <!0> comp (JoinCones (A.1, B.1))
+--                                   (middle (joinls (A, B, A.2, a) (?) @ !0))
+--                                   [ (!0 = 1) -> <!1> gluel {JoinCones (A.1, B.1)} a @ -!1 ], 
+--              (x = 1) -> <!0> middle (joinls (A, B, A.2, a) (?) @ !0) ])
+--      (gluel {JoinCones (A.1, B.1)} a @ x)
+-- (<_> left)
+-- (<_> middle (joinl a))
+
+Wedges_to_JoinCones_c2_A (A B : PointedType) : (sb : Susp A.1) 
+     -> Id ((Wedges A B).1) (JoinCones_to_Wedges A B (SuspA_to_JoinCones A B sb)) (winl (winl sb)) = split
+  north -> <x> winl (wglue{((WedgesL A B).1)} @ -x)
+  south -> <x> winl (winl south)
+  merid b @ x -> -- path algebra
+    <y> goal STUCK @ x @ y where 
+        goal : Unit -> IdP (<x> Id ((Wedges A B).1)
+                                   (JoinCones_to_Wedges A B (SuspA_to_JoinCones A B (merid {Susp A.1} b @ x)))
+                                   (winl (winl (merid {Susp A.1} b @ x))))
+                           (<x> winl (wglue{((WedgesL A B).1)} @ -x))
+                           (<x> winl (winl south)) = split
+          tt -> ?
+
+Wedges_to_JoinCones_c2_B (A B : PointedType) : (sb : Susp B.1) 
+     -> Id ((Wedges A B).1) (JoinCones_to_Wedges A B (SuspB_to_JoinCones A B sb)) (winr sb) = split
+  north -> <x> wglue{((Wedges A B).1)} @ x
+  south -> <x> winr south
+  merid b @ x -> <y> goal STUCK @ x @ y where 
+    goal : Unit -> IdP (<x> Id ((Wedges A B).1)
+                               (JoinCones_to_Wedges A B (SuspB_to_JoinCones A B (merid {Susp B.1} b @ x)))
+                               (winr (merid {Susp B.1} b @ x)))
+                       (<x> wglue{((Wedges A B).1)} @ x)
+                       (<x> winr south) = split
+      tt -> ?
+-- goal reduces to: 
+-- IdP (comp (winl (winr (joinrs (A, B, B.2, a) (?) @ x)))
+--           [ (x = 1) -> <!0> comp (wglue @ !0) 
+--                             [ (!0 = 0) -> <!1> winl (winr (joinrs (A, B, B.2, a) (?) @ !1)),
+--                               (!0 = 1) -> <!1> winr (merid {Susp (B.1)} a @ !1) ] ])
+--     (winr (merid {Susp (B.1)} a @ x))
+-- [ (x = 0) -> <!0> wglue @ !0, 
+--   (x = 1) -> <!0> winr south ]
+
+Wedges_to_JoinCones_c2_L (A B : PointedType) : (w : (WedgesL A B).1) 
+     -> Id ((Wedges A B).1) (JoinCones_to_Wedges A B (WedgesL_to_JoinCones A B w)) (winl w) = split
+  winl sa -> Wedges_to_JoinCones_c2_A A B sa
+  winr j -> <_> (winl (winr j))
+  wglue @ x -> <y> (winl (wglue{(WedgesL A B).1} @ (x \/ -y))) -- make inverse square using connections
+
+Wedges_to_JoinCones_c2 (A B : PointedType) : (w : (Wedges A B).1) 
+     -> Id ((Wedges A B).1) (JoinCones_to_Wedges A B (Wedges_to_JoinCones A B w)) w = split
+  winl l -> Wedges_to_JoinCones_c2_L A B l
+  winr b -> Wedges_to_JoinCones_c2_B A B b
+  wglue @ x -> <y> wglue{(Wedges A B).1} @ (x /\ y)
 
 -- ----------------------------------------------------------------------
 -- step 3: Wedges A B equivalent to ΣA ∨ Join A B ∨ ΣB 
