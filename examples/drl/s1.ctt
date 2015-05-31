@@ -1,9 +1,12 @@
 module s1 where
   
 import prelude
+import pointedtypes
 
 data S1 = base
         | loop <i> [(i=0) -> base, (i=1) -> base]
+
+S1P : PointedType = (S1, base)
 
 -- helpful abbreviations
 OmegaS1 : U = Id S1 base base

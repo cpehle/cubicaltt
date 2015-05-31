@@ -7,5 +7,9 @@ data Smash (A : PointedType) (B : PointedType) =
      spair (a : A.1) (b : B.1)
    | smash (a : A.1) (b : B.1) <x> [(x=0) -> spair a B.2,
                                     (x=1) -> spair A.2 b]
+   | smashpt <x y> [(x=0) -> smash{Smash A B} A.2 B.2 @ y,
+                    (x=1) -> spair A.2 B.2,
+                    (y=0) -> spair A.2 B.2,
+                    (y=1) -> spair A.2 B.2]
 
 SmashP (A : PointedType) (B : PointedType) : PointedType = (Smash A B, spair A.2 B.2)

@@ -253,12 +253,10 @@ whisker_square_top (A : U) (t0 t1 : A) (b0 b1 : A)
                    (top' : Id A t0 t1) (p : Id (Id A t0 t1) top top') : (IdP (<x> Id A (top' @ x) (bot @ x)) left right) = 
   <x> <y> comp A (sq @ x @ y) [(y = 0) -> <z> p @ z @ x]
 
-comp_inv_r (A : U) (a0 : A) : (a1 : A) (p : Id A a0 a1)
-          -> Id (Id A a0 a0) (<y> comp A (p @ y) [ (y = 1) -> <y> p @ -y ])
+comp_inv_r (A : U) (a0 : A) (a1 : A) (p : Id A a0 a1) :
+           Id (Id A a0 a0) (<y> comp A (p @ y) [ (y = 1) -> <y> p @ -y ])
                              (<_> a0) = 
-   J A a0 (\ (a1 : A) (p : Id A a0 a1) ->
-             Id (Id A a0 a0) (<y> comp A (p @ y) [ (y = 1) -> <y> p @ -y ]) (<_> a0))
-          (<_> <_> a0)
+   <x> <y> comp A (p @ (-x/\y)) [(y=1) -> <z> p@-(x\/z)]
 
 comp_inv_r2 (A : U) (a0 : A) : (a1 : A) (p : Id A a0 a1)
           -> Id (Id A a1 a1) (<y> comp A a0 [ (y = 0) -> p, (y = 1) -> <y> p @ y ])

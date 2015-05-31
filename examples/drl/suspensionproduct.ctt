@@ -10,7 +10,11 @@ import smash
 import join
 
 -- Σ(A×B) ≃ ΣA ∨ Σ(A∧B) ∨ ΣB 
+
 -- Proof:
+-- following Hatcher, as described here
+-- http://math.stackexchange.com/questions/301402/suspension-of-a-product-tricky-homotopy-equivalence
+
 --   Σ(A×B) 
 -- ≃ JoinCones A B
 -- ≃ Wedges A B 

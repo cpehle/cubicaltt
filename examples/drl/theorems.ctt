@@ -1,13 +1,15 @@
 
 module theorems where
 
-import hopffib
-import suspjoinbool
-import circle12
-import joinassoc
 import toruss1s1
 
+import circle12
+import suspjoinbool
+import joinassoc
+import hopffib
+
 -- work in progress
-import rsuspsusp
--- import suspsmashjoin
--- import suspensionproduct
+import rsuspsusp -- something left
+-- import smashcirclesusp -- ?
+-- import suspsmashjoin -- something left
+-- import suspensionproduct -- just some path induction

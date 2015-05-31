@@ -1,0 +1,273 @@
+module transportcompreg where
+
+Id (A : U) (a0 a1 : A) : U = IdP (<i> A) a0 a1
+
+-- transport in a composition in type
+-- (y axis goes up, x axis goes right)
+--
+--       Ax2
+--      _____
+--  A0y'| A'| A1y'
+--      |___|
+--       Ax1
+--      _____
+--   A0y| A | A1y
+--      |___|
+--       Ax0
+--
+-- start with an element of the composite line comp(A0y,A0y')
+-- transport to get an element of comp(A1y,A1y')
+transport_comp_U
+     -- square A 
+     (A00 A01 A10 A11 : U) 
+     (Ax0 : Id U A00 A10) (Ax1 : Id U A01 A11) (A0y : Id U A00 A01) (A1y : Id U A10 A11) 
+     (A : IdP (<x> Id U (Ax0 @ x) (Ax1 @ x))
+              A0y
+              A1y)
+     -- square A' that can be composed on top of it
+     (A02 A12 : U) 
+     (Ax2 : Id U A02 A12) (A0y' : Id U A01 A02) (A1y' : Id U A11 A12) 
+     (A' : IdP (<x> Id U (Ax1 @ x) (Ax2 @ x))
+               A0y'
+               A1y')
+     -- element of left of composite (0/x)
+     (a00 : A00) (a02 : A02) (p : IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)
+     : IdP (<y> comp U (A1y @ y) [(y=1) -> <y> A1y' @ y]) (transport Ax0 a00) (transport Ax2 a02) = 
+       <y> transport (<x> comp U (A @ x @ y) [(y=1) -> <y> A' @ x @ y]) (p @ y)
+
+-- the normal form of transport_comp_U; I got this by normalizing, but it looks like it matches what's in the PDF
+transport_comp_U_normal_form 
+     -- square A 
+     (A00 A01 A10 A11 : U) 
+     (Ax0 : Id U A00 A10) (Ax1 : Id U A01 A11) (A0y : Id U A00 A01) (A1y : Id U A10 A11) 
+     (A : IdP (<x> Id U (Ax0 @ x) (Ax1 @ x))
+              A0y
+              A1y)
+     -- square A' that can be composed on top of it
+     (A02 A12 : U) 
+     (Ax2 : Id U A02 A12) (A0y' : Id U A01 A02) (A1y' : Id U A11 A12) 
+     (A' : IdP (<x> Id U (Ax1 @ x) (Ax2 @ x))
+               A0y'
+               A1y')
+     -- element of left of composite (0/x)
+     (a00 : A00) (a02 : A02) (p : IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)
+     : IdP (<y> comp U (A1y @ y) [(y=1) -> <y> A1y' @ y]) (transport Ax0 a00) (transport Ax2 a02) = 
+   <x0> compElem (A1y @ x0) [ (x0 = 1) -> <x2> A1y' @ x2 ]
+                 (comp (A1y @ x0)
+                       (transport (<x1> A @ x1 @ x0) (elimComp (A0y @ x0) [ (x0 = 1) -> <x2> A0y' @ x2 ] (p @ x0)))
+                       [ (x0 = 1) -> <x1> transport (<x2> A1y' @ (x1 /\ -x2)) (transport (<x2> A' @ x2 @ x1) (transport (<x2> A0y' @ (x1 \/ -x2)) a02)) ])
+                 [ (x0 = 1) -> transport (<x0> Ax2 @ x0) a02 ]
+
+-- the original term and the normal form are definitionally equal
+transport_comp_U_deq
+     -- square A 
+     (A00 A01 A10 A11 : U) 
+     (Ax0 : Id U A00 A10) (Ax1 : Id U A01 A11) (A0y : Id U A00 A01) (A1y : Id U A10 A11) 
+     (A : IdP (<x> Id U (Ax0 @ x) (Ax1 @ x))
+              A0y
+              A1y)
+     -- square A' that can be composed on top of it
+     (A02 A12 : U) 
+     (Ax2 : Id U A02 A12) (A0y' : Id U A01 A02) (A1y' : Id U A11 A12) 
+     (A' : IdP (<x> Id U (Ax1 @ x) (Ax2 @ x))
+               A0y'
+               A1y')
+     -- element of left of composite (0/x)
+     (a00 : A00) (a02 : A02) (p : IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)
+     : Id (IdP (<y> comp U (A1y @ y) [(y=1) -> <y> A1y' @ y]) (transport Ax0 a00) (transport Ax2 a02) )
+          (transport_comp_U A00 A01 A10 A11 Ax0 Ax1 A0y A1y A A02 A12 Ax2 A0y' A1y' A' a00 a02 p)
+          (transport_comp_U_normal_form A00 A01 A10 A11 Ax0 Ax1 A0y A1y A A02 A12 Ax2 A0y' A1y' A' a00 a02 p) = 
+      <_> (transport_comp_U A00 A01 A10 A11 Ax0 Ax1 A0y A1y A A02 A12 Ax2 A0y' A1y' A' a00 a02 p)
+
+
+-- ----------------------------------------------------------------------
+-- now consider the case where A and A' are degenerate in the x direction
+
+-- the transport cancels by regularity
+transport_comp_U_xdegen_reg
+     -- square A 
+     (A00 A01 : U) 
+     (A0y : Id U A00 A01)  
+     -- square A' that can be composed on top of it
+     (A02 : U) 
+     (A0y' : Id U A01 A02) 
+     -- element of left of composite (0/x)
+     (a00 : A00) (a02 : A02) (p : IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)
+     : Id (IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02) 
+           (transport_comp_U A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+                             A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+                             a00 a02 p)
+           p = <_> p
+
+-- but the normal form doesn't seem to cancel
+transport_comp_U_normal_form_xdegen
+     -- square A 
+     (A00 A01 : U) 
+     (A0y : Id U A00 A01)  
+     -- square A' that can be composed on top of it
+     (A02 : U) 
+     (A0y' : Id U A01 A02) 
+     -- element of left of composite (0/x)
+     (a00 : A00) (a02 : A02) (p : IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)
+     : (IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02) = 
+       (transport_comp_U_normal_form A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+                                     A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+                                     a00 a02 p)
+-- normalizing this gives 
+-- NORMEVAL: \(A00 A01 : U) -> \(A0y : IdP (<!0> U) A00 A01) -> \(A02 : U) -> \(A0y' : IdP (<!0> U) A01 A02) -> \(a00 : A00) -> \(a02 : A02) -> \(p : IdP (<!0> comp U (A0y @ !0) [ (!0 = 1) -> <!1> A0y' @ !1 ]) a00 a02) -> 
+-- <!0> compElem (A0y @ !0) [ (!0 = 1) -> <!0> A0y' @ !0 ]
+--               -- this comp needs to vanish, but it doesn't
+--               (comp (A0y @ !0) 
+--                     (elimComp (A0y @ !0) [ (!0 = 1) -> <!0> A0y' @ !0 ] (p @ !0))
+--                     [ (!0 = 1) -> <!1> trans (<!2> A0y' @ (!1 /\ -!2)) (trans (<!2> A0y' @ (!1 \/ -!2)) a02) ])
+--               [ (!0 = 1) -> a02 ]
+
+
+-- a bunch of proofs that should work but do not for this case:
+
+-- cannot prove normal form is equal to p using reflexivity (path endpoints don't match for p)
+-- 
+-- transport_comp_U_normal_form_xdegen_reg
+--      -- square A 
+--      (A00 A01 : U) 
+--      (A0y : Id U A00 A01)  
+--      -- square A' that can be composed on top of it
+--      (A02 : U) 
+--      (A0y' : Id U A01 A02) 
+--      -- element of left of composite (0/x)
+--      (a00 : A00) (a02 : A02) (p : IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)
+--      : Id  (IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)  
+--            ((transport_comp_U_normal_form A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+--                                           A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+--                                           a00 a02 p))
+--            p = <_> p
+
+-- cannot prove transport and normal form are definitionally equal in this instance
+-- by reflexivity, even though we could do the fully general instance above (path endpoints don't match)
+-- 
+-- transport_comp_U_xdegen_deq_1
+--      -- square A 
+--      (A00 A01 : U) 
+--      (A0y : Id U A00 A01)  
+--      -- square A' that can be composed on top of it
+--      (A02 : U) 
+--      (A0y' : Id U A01 A02) 
+--      -- element of left of composite (0/x)
+--      (a00 : A00) (a02 : A02) (p : IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)
+--      : Id  (IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)  
+--            ((transport_comp_U        A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+--                                      A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+--                                      a00 a02 p))
+--            ((transport_comp_U_normal_form A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+--                                           A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+--                                           a00 a02 p))
+--            = <_> ((transport_comp_U  A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+--                                      A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+--                                      a00 a02 p))
+
+-- cannot prove transport and normal form are definitionally equal in this instance
+-- by other reflexivity (path endpoints don't match)
+-- transport_comp_U_xdegen_deq_2
+--      -- square A 
+--      (A00 A01 : U) 
+--      (A0y : Id U A00 A01)  
+--      -- square A' that can be composed on top of it
+--      (A02 : U) 
+--      (A0y' : Id U A01 A02) 
+--      -- element of left of composite (0/x)
+--      (a00 : A00) (a02 : A02) (p : IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)
+--      : Id  (IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)  
+--            ((transport_comp_U        A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+--                                      A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+--                                      a00 a02 p))
+--            ((transport_comp_U_normal_form A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+--                                           A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+--                                           a00 a02 p))
+--            = <_> ((transport_comp_U_normal_form  A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+--                                                  A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+--                                                  a00 a02 p))
+
+-- can't use reflexivity at p to prove the equation (path endpoints don't match)
+-- 
+-- transport_comp_U_xdegen_deq_p
+--      -- square A 
+--      (A00 A01 : U) 
+--      (A0y : Id U A00 A01)  
+--      -- square A' that can be composed on top of it
+--      (A02 : U) 
+--      (A0y' : Id U A01 A02) 
+--      -- element of left of composite (0/x)
+--      (a00 : A00) (a02 : A02) (p : IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)
+--      : Id  (IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)  
+--            ((transport_comp_U        A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+--                                      A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+--                                      a00 a02 p))
+--            ((transport_comp_U_normal_form A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+--                                           A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+--                                           a00 a02 p))
+--            = <_> p
+ 
+-- but we *can* prove it by instantiating the fully general equality
+transport_comp_U_xdegen_use_deq
+     -- square A 
+     (A00 A01 : U) 
+     (A0y : Id U A00 A01)  
+     -- square A' that can be composed on top of it
+     (A02 : U) 
+     (A0y' : Id U A01 A02) 
+     -- element of left of composite (0/x)
+     (a00 : A00) (a02 : A02) (p : IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)
+     : Id  (IdP (<y> comp U (A0y @ y) [(y=1) -> <y> A0y' @ y]) a00 a02)  
+           ((transport_comp_U        A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+                                     A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+                                     a00 a02 p))
+           ((transport_comp_U_normal_form A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+                                          A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+                                          a00 a02 p))
+           = ((transport_comp_U_deq A00 A01 A00 A01 (<_> A00) (<_> A01) A0y A0y (<_> A0y)
+                                    A02 A02 (<_> A02) A0y' A0y' (<_> A0y')
+                                    a00 a02 p))
+
+-- normal form is refl p, which didn't type check in the previous try
+-- 
+-- NORMEVAL: \ (A00 A01 : U) -> \ (A0y : IdP (<!0> U) A00 A01) -> \ (A02 : U) -> \ (A0y' : IdP (<!0> U) A01 A02) -> 
+--           \ (a00 : A00) -> \ (a02 : A02) -> \ (p : IdP (<!0> comp U (A0y @ !0) [ (!0 = 1) -> <!1> A0y' @ !1 ]) a00 a02) 
+--           -> <!0 !0> p @ !0
+
+
+
+-- ----------------------------------------------------------------------
+-- y degeneracy works for both
+
+transport_comp_U_ydegen_reg
+     -- square A 
+     (A00 A01 A10 A11 : U) 
+     (Ax0 : Id U A00 A10) (Ax1 : Id U A01 A11) (A0y : Id U A00 A01) (A1y : Id U A10 A11) 
+     (A : IdP (<x> Id U (Ax0 @ x) (Ax1 @ x))
+              A0y
+              A1y)
+     -- element of left of composite (0/x)
+     (a00 : A00) (a01 : A01) (p : IdP (<y> (A0y @ y)) a00 a01)
+     : Id (IdP A1y (transport Ax0 a00) (transport Ax1 a01))
+          (transport_comp_U A00 A01 A10 A11 Ax0 Ax1 A0y A1y A
+                            A01 A11 Ax1 (<_> A01) (<_> A11) (<x> <_> Ax1 @ x)
+                            a00 a01 p)
+          (<y> transport (<x> A @ x @ y) (p @ y)) 
+       = <_> (<y> transport (<x> A @ x @ y) (p @ y))
+
+transport_comp_U_ydegen_reg_normal_form
+     -- square A 
+     (A00 A01 A10 A11 : U) 
+     (Ax0 : Id U A00 A10) (Ax1 : Id U A01 A11) (A0y : Id U A00 A01) (A1y : Id U A10 A11) 
+     (A : IdP (<x> Id U (Ax0 @ x) (Ax1 @ x))
+              A0y
+              A1y)
+     -- element of left of composite (0/x)
+     (a00 : A00) (a01 : A01) (p : IdP (<y> (A0y @ y)) a00 a01)
+     : Id (IdP A1y (transport Ax0 a00) (transport Ax1 a01))
+          (transport_comp_U_normal_form A00 A01 A10 A11 Ax0 Ax1 A0y A1y A
+                                        A01 A11 Ax1 (<_> A01) (<_> A11) (<x> <_> Ax1 @ x)
+                                        a00 a01 p)
+          (<y> transport (<x> A @ x @ y) (p @ y)) 
+       = <_> (<y> transport (<x> A @ x @ y) (p @ y))
+
